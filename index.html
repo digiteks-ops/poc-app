@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e293b">
+<title>Smart Guest House Cloud - EZVIZ</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
+.sidebar{background:#1e293b;color:#fff}
+.sidebar-inner{background:#1e293b;color:#fff;--bs-offcanvas-width:280px}
+.sidebar a{color:#94a3b8;text-decoration:none;padding:12px 20px;display:block;border-radius:6px;margin-bottom:6px;font-weight:500;cursor:pointer}
+.sidebar a:hover,.sidebar a.active{background:#0ea5e9;color:#fff}
+.content-area{padding:16px;min-width:0}
+.tab-content-item{display:none}.tab-content-item.active{display:block}
+.card-kamar{border-top:4px solid #10b981}.card-kamar.terisi{border-top-color:#ef4444}
+.hidden{display:none!important}
+#authBox{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1e293b;padding:16px}
+#app{padding:0}
+#app>.row{--bs-gutter-x:0}
+
+/* Top bar (hanya tampil di HP) */
+.topbar{position:sticky;top:0;z-index:1030;display:flex;align-items:center;gap:12px;background:#1e293b;color:#fff;
+  padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.topbar .btn-menu{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;
+  color:#fff;border:1px solid #475569;border-radius:8px;background:transparent}
+.topbar .btn-menu:active{background:#0ea5e9}
+.topbar-title{font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.btn-icon.btn{width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.kos-filter{width:100%}
+.head-actions{width:100%}
+.head-actions .btn{flex:1 1 auto}
+#info-body .alert{word-break:break-word}
+
+@media(min-width:576px){
+  .kos-filter{width:auto;min-width:250px}
+  .head-actions{width:auto}
+  .head-actions .btn{flex:0 0 auto}
+}
+@media(min-width:768px){
+  .content-area{padding:30px}
+  .sidebar{min-height:100vh;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto}
+}
+@media(max-width:767.98px){
+  .sidebar-inner{overflow-y:auto}
+  .sidebar a{padding:14px 18px}
+  .content-area h3{font-size:1.25rem}
+  .stat-row h6{font-size:.8rem}
+  .stat-row h2{font-size:1.6rem}
+  .stat-row h4{font-size:1.3rem}
+  .btn-sm{padding:.4rem .75rem}
+
+  /* Tabel berubah jadi kartu per baris di HP */
+  .table-stack thead{display:none}
+  .table-stack,.table-stack tbody,.table-stack tr,.table-stack td{display:block;width:100%}
+  .table-stack tr{border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;padding:6px 12px;background:#fff}
+  .table-stack td{border:0!important;padding:6px 0!important;text-align:right;box-shadow:none!important;background:transparent!important;overflow-wrap:anywhere}
+  .table-stack td::before{content:attr(data-label);float:left;max-width:42%;margin-right:12px;font-weight:600;color:#64748b;text-align:left}
+  .table-stack td::after{content:"";display:block;clear:both}
+  .table-stack td:not([data-label]){text-align:center}
+  .table-stack td:not([data-label])::before{content:none}
+  .table-stack td .d-flex{justify-content:flex-end}
+  .table-stack td .btn{margin-bottom:2px}
+}
+</style>
+</head>
+<body>
+
+<!-- Form Login -->
+<div id="authBox">
+  <div class="card shadow p-4" style="width:100%;max-width:380px">
+    <div class="text-center mb-3">
+      <i class="fa-solid fa-house-lock fa-2x text-info"></i>
+      <h5 class="fw-bold mt-2 mb-0">Smart Guest House</h5>
+      <small class="text-muted">Multi-Pemilik Kos Cloud</small>
+    </div>
+    <form id="formLogin" onsubmit="return false;">
+      <div class="mb-2">
+        <label class="form-label">Nomor Telepon</label>
+        <input type="tel" id="login-phone" class="form-control" placeholder="Contoh: 085242306022" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-pw" class="form-control" placeholder="Password" required>
+      </div>
+      <button class="btn btn-primary w-100" type="submit">Masuk Aplikasi</button>
+    </form>
+    <div id="authMsg" class="text-danger small mt-2 text-center"></div>
+  </div>
+</div>
+
+<!-- Layout Aplikasi Utama -->
+<div class="container-fluid hidden" id="app">
+
+  <!-- Top bar mobile -->
+  <div class="topbar d-md-none">
+    <button class="btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+    <div class="topbar-title" id="topbarTitle">Guest House</div>
+  </div>
+
+<div class="row">
+  <div class="col-md-3 col-lg-2 sidebar p-0">
+   <div class="sidebar-inner offcanvas-md offcanvas-start p-3" tabindex="-1" id="sidebarMenu" aria-label="Menu utama">
+    <div class="d-md-none text-end"><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Tutup menu"></button></div>
+    <div class="text-center my-3">
+      <i class="fa-solid fa-house-lock fa-2x text-info mb-2"></i>
+      <h5 class="fw-bold text-white mb-0" id="userKosDisplay">Guest House</h5>
+      <small class="text-info fw-bold" id="userDisplayName">-</small>
+    </div>
+    <hr class="border-secondary">
+    <nav class="nav flex-column">
+      <a id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard</a>
+      <a id="nav-kamar" onclick="switchTab('kamar')"><i class="fa-solid fa-door-open me-2"></i>Manajemen Kamar</a>
+      <a id="nav-penghuni" onclick="switchTab('penghuni')"><i class="fa-solid fa-users me-2"></i>Penghuni</a>
+      <a id="nav-tagihan" onclick="switchTab('tagihan')"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Tagihan &amp; Biaya</a>
+      <a id="nav-device" onclick="switchTab('device')"><i class="fa-solid fa-key me-2"></i>Setting Smartlock</a>
+      <a id="nav-locks" onclick="switchTab('locks'); populateLockRooms();"><i class="fa-solid fa-lock me-2"></i>Password Pintu</a>
+      <a id="nav-diag" onclick="switchTab('diag'); runCommissioning(); populateTestRooms();"><i class="fa-solid fa-stethoscope me-2"></i>Testing &amp; Commissioning</a>
+      <a id="nav-logs" onclick="switchTab('logs')"><i class="fa-solid fa-clock-rotate-left me-2"></i>Log Aktivitas</a>
+      
+      <!-- Menu Khusus Akun Master -->
+      <a id="nav-master-owners" class="master-only hidden" onclick="switchTab('master-owners'); loadMasterOwners();"><i class="fa-solid fa-users-gear me-2"></i>Kelola Nama Kos</a>
+      
+      <a onclick="logout()" class="mt-3 text-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Keluar</a>
+    </nav>
+   </div>
+  </div>
+
+  <div class="col-md-9 col-lg-10 content-area">
+
+    <!-- Tab Dashboard -->
+    <div id="tab-dashboard" class="tab-content-item active">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <h3 class="fw-bold mb-0">Ringkasan Operasional</h3>
+        <div class="master-only hidden kos-filter">
+          <select id="dash-kos-filter" class="form-select border-primary" onchange="fetchData()">
+            <option value="">-- Semua Kos (Agregat) --</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 g-md-3 mb-4 stat-row">
+        <div class="col-4 col-md-3"><div class="card bg-primary text-white shadow-sm p-2 p-md-3 h-100"><h6>Total Kamar</h6><h2 id="stat-total">0</h2></div></div>
+        <div class="col-4 col-md-3"><div class="card bg-success text-white shadow-sm p-2 p-md-3 h-100"><h6>Kamar Terisi</h6><h2 id="stat-terisi">0</h2></div></div>
+        <div class="col-4 col-md-3"><div class="card bg-info text-white shadow-sm p-2 p-md-3 h-100"><h6>Kamar Kosong</h6><h2 id="stat-kosong">0</h2></div></div>
+        <div class="col-12 col-md-3"><div class="card bg-dark text-white shadow-sm p-3 h-100"><h6>Pendapatan Bulan Ini</h6><h4 id="stat-pendapatan">Rp 0</h4></div></div>
+      </div>
+      <div class="card shadow-sm p-4">
+        <h5 class="fw-bold mb-3">Grafik Pendapatan Bulanan</h5>
+        <canvas id="incomeChart" style="max-height:280px"></canvas>
+      </div>
+    </div>
+
+    <!-- Tab Manajemen Kamar -->
+    <div id="tab-kamar" class="tab-content-item">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Manajemen Kamar Kos</h3>
+        <div class="d-flex flex-wrap gap-2 head-actions">
+          <div class="master-only hidden kos-filter">
+            <select id="kamar-kos-filter" class="form-select border-primary" onchange="fetchData()">
+              <option value="">-- Semua Nama Kos --</option>
+            </select>
+          </div>
+          <button class="btn btn-primary master-only hidden" onclick="openAddRoomModal()"><i class="fa-solid fa-plus me-1"></i>Tambah Kamar</button>
+        </div>
+      </div>
+      <div class="row g-3" id="container-kamar"></div>
+    </div>
+
+    <!-- Tab Penghuni -->
+    <div id="tab-penghuni" class="tab-content-item">
+      <h3 class="fw-bold mb-3">Daftar Penghuni Active &amp; History</h3>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-hover align-middle">
+          <thead class="table-light"><tr><th>Kamar / Kos</th><th>Nama</th><th>Email (Wajib)</th><th>No. HP</th><th>Masa Sewa</th><th>Status Access</th><th>Aksi</th></tr></thead>
+          <tbody id="table-penghuni"></tbody>
+        </table></div></div>
+    </div>
+
+    <!-- Tab Tagihan -->
+    <div id="tab-tagihan" class="tab-content-item">
+      <h3 class="fw-bold mb-3">Catatan Tagihan</h3>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-hover align-middle">
+          <thead class="table-light"><tr><th>Kamar / Kos</th><th>Penyewa</th><th>Masa Sewa</th><th>Jumlah</th><th>Status Pembayaran</th><th>Aksi</th></tr></thead>
+          <tbody id="table-tagihan"></tbody>
+        </table></div></div>
+    </div>
+
+    <!-- Tab Setting Smartlock -->
+    <div id="tab-device" class="tab-content-item">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Setting &amp; Verifikasi Smartlock Perangkat</h3>
+        <div class="master-only hidden kos-filter">
+          <select id="device-kos-filter" class="form-select border-primary" onchange="fetchData()">
+            <option value="">-- Semua Nama Kos --</option>
+          </select>
+        </div>
+      </div>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-striped align-middle">
+          <thead><tr><th>Kamar / Kos</th><th>Serial Number (SN)</th><th>Verification Code</th><th>Aksi Pengaturan</th></tr></thead>
+          <tbody id="table-device"></tbody>
+        </table></div></div>
+    </div>
+
+    <!-- Tab Password Sementara di Pintu -->
+    <div id="tab-locks" class="tab-content-item">
+      <h3 class="fw-bold mb-3">Password Sementara di Pintu</h3>
+      <div class="card shadow-sm p-3 mb-3">
+        <p class="text-muted small mb-3">Lihat password sementara yang tersimpan di smartlock (maksimal 10 slot), hapus satu per satu, atau bersihkan otomatis yang <b>kadaluarsa</b>, <b>tidak terpakai</b>, dan milik penyewa yang sudah <b>check-out</b>. Password penyewa aktif tidak ikut terhapus pada pembersihan otomatis.</p>
+        <div class="row g-2 align-items-center">
+          <div class="col-md-4"><select id="locks-room" class="form-select" onchange="loadLockPasswords()"><option value="">-- Pilih Kamar --</option></select></div>
+          <div class="col-auto"><button class="btn btn-outline-primary" onclick="loadLockPasswords()"><i class="fa-solid fa-rotate me-1"></i>Muat Daftar</button></div>
+          <div class="col-auto"><button class="btn btn-warning fw-bold" onclick="cleanupLock('auto')"><i class="fa-solid fa-broom me-1"></i>Bersihkan Otomatis (Kamar Ini)</button></div>
+          <div class="col-auto"><button class="btn btn-danger" onclick="cleanupLock('all')"><i class="fa-solid fa-trash me-1"></i>Hapus Semua (Kamar Ini)</button></div>
+          <div class="col-auto"><button class="btn btn-dark" onclick="cleanupAllRooms()"><i class="fa-solid fa-broom me-1"></i>Bersihkan Otomatis Semua Kamar</button></div>
+        </div>
+        <div id="locks-status" class="mt-3"></div>
+      </div>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-hover align-middle">
+          <thead class="table-light"><tr><th>ID</th><th>Nama</th><th>Penerima</th><th>Berlaku</th><th>Sisa Pakai</th><th>Kategori</th><th>Aksi</th></tr></thead>
+          <tbody id="table-locks"><tr><td colspan="7" class="text-center text-muted">Pilih kamar untuk memuat daftar.</td></tr></tbody>
+        </table></div></div>
+    </div>
+
+    <!-- Tab Testing & Commissioning -->
+    <div id="tab-diag" class="tab-content-item">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Testing &amp; Commissioning</h3>
+        <button class="btn btn-primary" onclick="runCommissioning()"><i class="fa-solid fa-vial me-2"></i>Jalankan Pengujian Sistem Base</button>
+      </div>
+
+      <!-- Modul Diagnosa Uji Sinkronisasi Perangkat -->
+      <div class="card shadow-sm p-3 mb-4 border-primary">
+        <h5 class="fw-bold text-primary mb-2"><i class="fa-solid fa-bug me-2"></i>Pengujian Uji Coba Error Sinkronisasi OTAP</h5>
+        <p class="text-muted small mb-3">Pilih kamar untuk mensimulasikan penambahan password temporer secara langsung ke API EZVIZ V3 dan menganalisis kode balikan error server.</p>
+        <div class="row g-2 align-items-center">
+          <div class="col-md-5">
+            <select id="test-room-select" class="form-select">
+              <option value="">-- Pilih Kamar Untuk Dites --</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-warning w-100 fw-bold" onclick="runSyncTest()"><i class="fa-solid fa-paper-plane me-1"></i> Tes Kirim OTAP</button>
+          </div>
+        </div>
+        <div id="sync-test-result" class="mt-3"></div>
+      </div>
+
+      <div class="card shadow-sm p-3 mb-3">
+        <p class="text-muted small mb-2">Pemeriksaan integrasi sistem: Koneksi Database, Token EZVIZ API, dan status Perangkat.</p>
+        <div id="commissioning-results"></div>
+      </div>
+    </div>
+
+    <!-- Tab Log Aktivitas -->
+    <div id="tab-logs" class="tab-content-item">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Log Audit Aktivitas &amp; Riwayat Masuk Pintu</h3>
+        <button class="btn btn-outline-primary btn-sm" id="btn-sync-door" onclick="syncDoorLogs(true)"><i class="fa-solid fa-door-open me-2"></i>Sinkron Riwayat Pintu</button>
+      </div>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-sm table-hover">
+          <thead><tr><th>Waktu</th><th>User (No. HP)</th><th>Kamar</th><th>Aksi</th><th>Status</th><th>Detail</th></tr></thead>
+          <tbody id="table-logs"></tbody>
+        </table></div></div>
+
+      <h4 class="fw-bold mt-4 mb-2"><i class="fa-solid fa-door-open me-2"></i>Riwayat Masuk Pintu</h4>
+      <div id="door-sync-msg" class="small text-muted mb-2" style="white-space: pre-line;"></div>
+      <div class="input-group input-group-sm mb-2" style="max-width: 460px;">
+        <select id="door-diag-room" class="form-select"></select>
+        <button class="btn btn-outline-secondary" onclick="diagDoorLogs()"><i class="fa-solid fa-stethoscope me-1"></i>Diagnosis Data EZVIZ</button>
+      </div>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-sm table-hover">
+          <thead><tr><th>Waktu</th><th>User</th><th>Kamar</th><th>Metode Buka</th><th>Status</th></tr></thead>
+          <tbody id="table-door-logs"></tbody>
+        </table></div></div>
+    </div>
+
+    <!-- Tab Kelola Kos (Khusus Master) -->
+    <div id="tab-master-owners" class="tab-content-item master-only hidden">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Manajemen Nama Kos &amp; Pemilik</h3>
+        <button class="btn btn-success" onclick="openAddOwnerModal()"><i class="fa-solid fa-house-medical me-2"></i>Tambah Nama Kos Baru</button>
+      </div>
+      <div class="card shadow-sm p-3"><div class="table-responsive">
+        <table class="table-stack table table-hover align-middle">
+          <thead class="table-light"><tr><th>ID</th><th>Nama Kos</th><th>Pemilik</th><th>No. Telepon Login</th><th>Tipe</th><th>Aksi</th></tr></thead>
+          <tbody id="table-master-owners"></tbody>
+        </table></div></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- Modal Check-In -->
+<div class="modal fade" id="modalCheckIn" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title fw-bold">Check-In Kamar <span id="modal-room-title"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <form id="formCheckIn" onsubmit="return false;">
+      <input type="hidden" id="checkin-room-id">
+      <div class="mb-2">
+        <label class="form-label">Nama Penghuni</label>
+        <input id="checkin-nama" class="form-control" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label fw-bold text-primary">Email Penghuni (WAJIB)</label>
+        <input type="email" id="checkin-email" class="form-control" placeholder="contoh: penyewa@email.com" required>
+        <small class="text-muted">Akses pintu dikirimkan ke email ini.</small>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">No. HP (Opsional)</label>
+        <input id="checkin-telp" class="form-control" placeholder="+62812345678">
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-12 col-sm-6"><label class="form-label">Mulai Sewa</label><input type="datetime-local" id="checkin-start" class="form-control" required></div>
+        <div class="col-12 col-sm-6"><label class="form-label">Akhir Sewa</label><input type="datetime-local" id="checkin-end" class="form-control" required></div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Biaya Sewa (Rp)</label>
+        <input type="number" id="checkin-price" class="form-control" min="0">
+      </div>
+      <button class="btn btn-primary w-100" type="submit">Proses Check-In</button>
+    </form>
+  </div>
+</div></div></div>
+
+<!-- Modal Tambah/Edit Kamar -->
+<div class="modal fade" id="modalRoom" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title fw-bold" id="modalRoomTitle">Tambah Kamar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <form id="formRoom" onsubmit="return false;">
+      <input type="hidden" id="room-id">
+      <div class="mb-2 master-only hidden">
+        <label class="form-label">Nama Kos</label>
+        <select id="room-owner-id" class="form-select"></select>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Nomor / Nama Kamar</label>
+        <input id="room-number" class="form-control" placeholder="Contoh: 101" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Harga Sewa Kamar (Rp)</label>
+        <input type="number" id="room-price" class="form-control" placeholder="1000000" min="0">
+      </div>
+      <button class="btn btn-primary w-100" type="submit">Simpan Kamar</button>
+    </form>
+  </div>
+</div></div></div>
+
+<!-- Modal Setting Smartlock -->
+<div class="modal fade" id="modalDevice" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Setting Smartlock</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <form id="formDevice" onsubmit="return false;">
+      <input type="hidden" id="device-room-id">
+      <div class="mb-3"><label class="form-label">Serial Number (SN) Perangkat</label><input id="device-sn" class="form-control" placeholder="Contoh: BK6286559" required></div>
+      <div class="mb-3"><label class="form-label">Verification Code</label><input id="device-code" class="form-control" placeholder="Contoh: XIBGHI" required></div>
+      <button class="btn btn-success w-100" type="submit">Simpan Konfigurasi</button>
+    </form>
+  </div>
+</div></div></div>
+
+<!-- Modal Tambah/Edit Kos -->
+<div class="modal fade" id="modalAddOwner" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title fw-bold" id="modalOwnerTitle">Tambah Nama Kos Baru</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body">
+    <form id="formAddOwner" onsubmit="return false;">
+      <input type="hidden" id="owner-edit-id">
+      <div class="mb-2">
+        <label class="form-label">Nama Kos</label>
+        <input id="owner-kos-nama" class="form-control" placeholder="Contoh: Kos Melati Utama" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Nama Pemilik / Pengelola</label>
+        <input id="owner-nama" class="form-control" placeholder="Contoh: Bpk Ahmad" required>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Nomor Telepon Login</label>
+        <input type="tel" id="owner-telp" class="form-control" placeholder="081234567890" required>
+      </div>
+      <div class="mb-3" id="box-owner-pw">
+        <label class="form-label">Password Akun Login</label>
+        <input type="password" id="owner-pw" class="form-control" placeholder="Default: gringary">
+      </div>
+      <button class="btn btn-success w-100" type="submit">Simpan Data Kos</button>
+    </form>
+  </div>
+</div></div></div>
+
+<!-- Modal Notifikasi Terstruktur -->
+<div class="modal fade" id="modalInfo" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content shadow">
+  <div class="modal-header bg-light"><h5 class="modal-title fw-bold" id="info-title">Notifikasi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body fs-6 p-4" id="info-body"></div>
+  <div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button></div>
+</div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let CURRENT_USER = null;
+let D = { rooms: [], tenants: [], payments: [], smartlock: [], audit: [], owners: [] };
+let incomeChart = null;
+
+const $ = function(id) { return document.getElementById(id); };
+const rp = function(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+const esc = function(s) {
+  return String(s || '').replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+};
+const modal = function(id) { return bootstrap.Modal.getOrCreateInstance($(id)); };
+
+async function api(url, method, body) {
+  method = method || 'GET';
+  try {
+    const res = await fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    if (res.status === 401) { location.reload(); }
+    return data;
+  } catch (err) {
+    return { ok: false, message: 'Gagal terhubung ke server Flask.' };
+  }
+}
+
+function info(title, message, statusType) {
+  let kind = 'success';
+  if (statusType === false) {
+    kind = 'danger';
+  } else if (statusType !== true && statusType !== undefined && statusType !== null && statusType !== '') {
+    const u = String(statusType).toUpperCase();
+    if (u === 'WARNING' || u === 'OFFLINE' || u === 'SIMULATION') kind = 'warning';
+    else if (u === 'ONLINE' || u === 'OK') kind = 'success';
+    else kind = 'danger';   // ERROR, WRONG_SN, NET_ERROR, NOT_DEVICE_OWNER, TOKEN_ERROR, dst.
+  }
+  const icons = {
+    success: '<i class="fa-solid fa-circle-check text-success me-2"></i>',
+    warning: '<i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>',
+    danger: '<i class="fa-solid fa-circle-xmark text-danger me-2"></i>'
+  };
+  $('info-title').innerHTML = icons[kind] + esc(title);
+  $('info-body').innerHTML = '<div class="alert alert-' + kind + ' mb-0" style="white-space: pre-line;">' + esc(message) + '</div>';
+  modal('modalInfo').show();
+}
+
+let doorTimer = null;
+function switchTab(t) {
+  const oc = $('sidebarMenu');
+  if (oc && oc.classList.contains('show')) bootstrap.Offcanvas.getOrCreateInstance(oc).hide();
+  window.scrollTo(0, 0);
+  if (t === 'logs') {
+    if (CURRENT_USER) syncDoorLogs(false);
+    if (!doorTimer) doorTimer = setInterval(function() { if ($('tab-logs').classList.contains('active')) syncDoorLogs(false); }, 60000);
+  }
+  document.querySelectorAll('.tab-content-item').forEach(function(e) { e.classList.remove('active'); });
+  document.querySelectorAll('.sidebar a').forEach(function(e) { e.classList.remove('active'); });
+  $('tab-' + t).classList.add('active');
+  const navEl = $('nav-' + t);
+  if (navEl) navEl.classList.add('active');
+}
+
+async function boot() {
+  const me = await api('/api/me');
+  if (me && me.authenticated) {
+    enterApp(me);
+  }
+}
+
+$('formLogin').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  $('authMsg').innerText = 'Memproses...';
+
+  const phone = $('login-phone').value;
+  const password = $('login-pw').value;
+  const r = await api('/api/login', 'POST', { phone: phone, password: password });
+
+  if (r && r.ok) {
+    $('authMsg').innerText = '';
+    enterApp(r);
+  } else {
+    $('authMsg').innerText = (r && r.message) ? r.message : 'Login gagal. Periksa nomor telepon & password.';
+  }
+});
+
+async function logout() {
+  await api('/api/logout', 'POST');
+  location.reload();
+}
+
+function enterApp(user) {
+  CURRENT_USER = user;
+  $('authBox').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('userKosDisplay').innerText = user.kos_name || 'Kos Guest House';
+  $('topbarTitle').innerText = user.kos_name || 'Kos Guest House';
+  $('userDisplayName').innerText = (user.name || 'User') + ' (' + (user.phone || '') + ')';
+
+  document.querySelectorAll('.master-only').forEach(function(e) {
+    e.classList.toggle('hidden', !user.is_master);
+  });
+
+  fetchData().then(function() { syncDoorLogs(false); });
+}
+
+async function fetchData() {
+  const dashFilter = ($('dash-kos-filter') && $('dash-kos-filter').value) ? '?owner_id=' + $('dash-kos-filter').value : '';
+  const roomFilter = ($('kamar-kos-filter') && $('kamar-kos-filter').value) ? '?owner_id=' + $('kamar-kos-filter').value : '';
+  const deviceFilter = ($('device-kos-filter') && $('device-kos-filter').value) ? '?owner_id=' + $('device-kos-filter').value : '';
+
+  const jobs = [
+    api('/api/dashboard' + dashFilter),
+    api('/api/rooms' + roomFilter),
+    api('/api/tenants'),
+    api('/api/payments'),
+    api('/api/smartlock' + deviceFilter),
+    api('/api/audit')
+  ];
+
+  if (CURRENT_USER && CURRENT_USER.is_master) {
+    jobs.push(api('/api/master/owners'));
+  }
+
+  const results = await Promise.all(jobs);
+
+  D = {
+    dash: results[0] || {},
+    rooms: results[1] || [],
+    tenants: results[2] || [],
+    payments: results[3] || [],
+    smartlock: results[4] || [],
+    audit: results[5] || [],
+    owners: results[6] || []
+  };
+
+  if (CURRENT_USER && CURRENT_USER.is_master) {
+    populateKosDropdowns();
+  }
+
+  renderDashboard();
+  renderKamar();
+  renderPenghuni();
+  renderTagihan();
+  renderDevice();
+  renderLogs();
+  loadDoorLogs();
+  populateTestRooms();
+  populateLockRooms();
+}
+
+function populateKosDropdowns() {
+  const dashSel = $('dash-kos-filter');
+  const kamarSel = $('kamar-kos-filter');
+  const deviceSel = $('device-kos-filter');
+  const roomOwnerSel = $('room-owner-id');
+
+  const currDashVal = dashSel.value;
+  const currKamarVal = kamarSel.value;
+  const currDeviceVal = deviceSel.value;
+
+  dashSel.innerHTML = '<option value="">-- Semua Nama Kos (Agregat) --</option>';
+  kamarSel.innerHTML = '<option value="">-- Semua Nama Kos --</option>';
+  deviceSel.innerHTML = '<option value="">-- Semua Nama Kos --</option>';
+  roomOwnerSel.innerHTML = '';
+
+  D.owners.forEach(function(o) {
+    dashSel.innerHTML += '<option value="' + o.id + '">' + esc(o.kos_name) + ' (' + esc(o.phone) + ')</option>';
+    kamarSel.innerHTML += '<option value="' + o.id + '">' + esc(o.kos_name) + ' (' + esc(o.phone) + ')</option>';
+    deviceSel.innerHTML += '<option value="' + o.id + '">' + esc(o.kos_name) + ' (' + esc(o.phone) + ')</option>';
+    roomOwnerSel.innerHTML += '<option value="' + o.id + '">' + esc(o.kos_name) + ' (' + esc(o.name) + ')</option>';
+  });
+
+  dashSel.value = currDashVal;
+  kamarSel.value = currKamarVal;
+  deviceSel.value = currDeviceVal;
+}
+
+function populateTestRooms() {
+  const testSel = $('test-room-select');
+  if (!testSel) return;
+  testSel.innerHTML = '<option value="">-- Pilih Kamar Untuk Dites --</option>';
+  (D.rooms || []).forEach(function(r) {
+    testSel.innerHTML += '<option value="' + r.id + '">Kamar ' + esc(r.room_number) + (r.kos_name ? ' (' + esc(r.kos_name) + ')' : '') + '</option>';
+  });
+}
+
+async function runSyncTest() {
+  const rid = $('test-room-select').value;
+  const box = $('sync-test-result');
+  if (!rid) {
+    info('Validasi Gagal', 'Silakan pilih unit kamar yang akan diuji.', 'error');
+    return;
+  }
+
+  box.innerHTML = '<div class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Menguji respon API OTAP EZVIZ...</div>';
+  const r = await api('/api/admin/test-sync/' + rid, 'POST');
+
+  if (!r.ok && !r.code) {
+    box.innerHTML = '<div class="alert alert-danger">' + esc(r.message) + '</div>';
+    return;
+  }
+
+  const alertBg = r.ok ? 'alert-success' : 'alert-danger';
+  box.innerHTML = '<div class="alert ' + alertBg + ' mb-0"><strong>Hasil Pengujian API EZVIZ V3:</strong><br>' +
+    '• <strong>Status Koneksi:</strong> ' + (r.ok ? 'BERHASIL' : 'GAGAL') + '<br>' +
+    '• <strong>Domain Host:</strong> ' + esc(r.domain) + '<br>' +
+    '• <strong>Serial Number:</strong> ' + esc(r.serial_number) + '<br>' +
+    '• <strong>Kode HTTP/Meta Error:</strong> ' + esc(r.code) + '<br>' +
+    '• <strong>Klasifikasi Error:</strong> ' + esc(r.error_type) + '<br>' +
+    '• <strong>Keterangan Diagnosa:</strong> ' + esc(r.explanation) + '</div>';
+}
+
+function renderDashboard() {
+  const d = D.dash || {};
+  $('stat-total').innerText = d.total || 0;
+  $('stat-terisi').innerText = d.terisi || 0;
+  $('stat-kosong').innerText = d.kosong || 0;
+  $('stat-pendapatan').innerText = rp(d.pendapatan || 0);
+
+  if (incomeChart) incomeChart.destroy();
+  const ctx = $('incomeChart').getContext('2d');
+  incomeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: (d.chart || []).map(function(c) { return c.m; }),
+      datasets: [{
+        label: 'Pendapatan (Rp)',
+        data: (d.chart || []).map(function(c) { return c.s; }),
+        backgroundColor: '#0ea5e9'
+      }]
+    }
+  });
+}
+
+function renderKamar() {
+  const c = $('container-kamar');
+  c.innerHTML = '';
+
+  if (!D.rooms || !D.rooms.length) {
+    c.innerHTML = '<div class="col-12"><div class="card p-5 text-center text-muted border-0 shadow-sm">Belum ada unit kamar pada pilihan ini. Kamar baru ditambahkan oleh Master Administrator.</div></div>';
+    return;
+  }
+
+  D.rooms.forEach(function(r) {
+    const t = (D.tenants || []).find(function(x) { return x.room_id === r.id && x.status === 'AKTIF'; });
+    const terisi = (r.status === 'TERISI');
+    const kosTag = r.kos_name ? '<div class="small text-muted mb-1"><i class="fa-solid fa-house me-1"></i>' + esc(r.kos_name) + '</div>' : '';
+    let tenantInfo = '';
+
+    if (terisi && t) {
+      tenantInfo = '<div class="p-2 bg-light rounded mb-2 small"><strong>' + esc(t.name) + '</strong><br><span class="text-muted">' + esc(t.email) + '</span><br><span class="text-danger">' + esc(t.start_datetime) + ' s/d ' + esc(t.end_datetime) + '</span></div><button class="btn btn-sm btn-outline-danger w-100" onclick="doCheckOut(' + t.id + ')">Check-Out</button>';
+    } else {
+      tenantInfo = '<button class="btn btn-sm btn-success w-100" onclick="openCheckIn(' + r.id + ')">Check-In Baru</button>';
+    }
+
+    c.innerHTML += '<div class="col-12 col-sm-6 col-lg-4 col-xxl-3"><div class="card card-kamar ' + (terisi ? 'terisi' : '') + ' shadow-sm"><div class="card-body"><div class="d-flex justify-content-between align-items-center mb-1"><h5 class="fw-bold mb-0">Kamar ' + esc(r.room_number) + '</h5><div><button class="btn btn-sm btn-icon text-secondary" onclick="openEditRoomModal(' + r.id + ')"><i class="fa-solid fa-pen"></i></button>' + ((CURRENT_USER && CURRENT_USER.is_master) ? '<button class="btn btn-sm btn-icon text-danger" onclick="deleteRoom(' + r.id + ')"><i class="fa-solid fa-trash"></i></button>' : '') + '</div></div>' + kosTag + '<p class="fw-bold text-primary mb-2">' + rp(r.price) + '</p>' + tenantInfo + '</div></div></div>';
+  });
+}
+
+function renderPenghuni() {
+  const b = $('table-penghuni');
+  b.innerHTML = '';
+  if (!D.tenants || !D.tenants.length) {
+    b.innerHTML = '<tr><td colspan="7" class="text-muted text-center">Belum ada penyewa terdaftar.</td></tr>';
+    return;
+  }
+  D.tenants.forEach(function(t) {
+    const aktif = (t.status === 'AKTIF');
+    const kosTag = t.kos_name ? ' <small class="text-muted">(' + esc(t.kos_name) + ')</small>' : '';
+    const isSynced = (t.ezviz_sync_status === 'TEMP PASSWORD TERSINKRON');
+    const badgeBg = isSynced ? 'bg-success' : 'bg-warning text-dark';
+    
+    const syncBtn = aktif ? '<button class="btn btn-sm btn-light border ms-2 p-1" title="Sinkronkan Ulang ke EZVIZ" onclick="resyncTenant(' + t.id + ')"><i class="fa-solid fa-rotate text-primary"></i> Sync</button>' : '';
+
+    b.innerHTML += '<tr><td><strong>' + esc(t.room_number) + '</strong>' + kosTag + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.email) + '</td><td>' + esc(t.phone || '-') + '</td><td><small>' + esc(t.start_datetime) + ' s/d<br>' + esc(t.end_datetime) + '</small></td><td><div class="d-flex align-items-center"><span class="badge ' + badgeBg + '">' + esc(t.ezviz_sync_status) + '</span>' + syncBtn + '</div></td><td>' + (aktif ? '<button class="btn btn-sm btn-danger" onclick="doCheckOut(' + t.id + ')">Check-Out</button>' : '-') + '</td></tr>';
+  });
+}
+
+async function resyncTenant(tid) {
+  info('Memproses Sinkronisasi...', 'Mengirim ulang permintaan pemuatan password ke server EZVIZ...', 'SIMULATION');
+  const r = await api('/api/tenants/' + tid + '/sync', 'POST');
+  
+  let modalType = true;
+  if (!r.ok) {
+    modalType = r.warning ? 'warning' : 'error';
+  }
+  
+  info(r.ok ? 'Sinkronisasi Berhasil' : 'Sinkronisasi Gagal', r.message, modalType);
+  fetchData();
+}
+
+function renderTagihan() {
+  const b = $('table-tagihan');
+  b.innerHTML = '';
+  (D.payments || []).forEach(function(p) {
+    const lunas = (p.status === 'LUNAS');
+    const kosTag = p.kos_name ? ' <small class="text-muted">(' + esc(p.kos_name) + ')</small>' : '';
+    b.innerHTML += '<tr><td><strong>' + esc(p.room_number) + '</strong>' + kosTag + '</td><td>' + esc(p.tenant || '-') + '</td><td><small>' + esc(p.start_date) + ' s/d ' + esc(p.end_date) + '</small></td><td>' + rp(p.amount) + '</td><td><span class="badge ' + (lunas ? 'bg-success' : 'bg-danger') + '">' + (lunas ? 'Lunas' : 'Belum Bayar') + '</span></td><td><button class="btn btn-sm btn-warning" onclick="togglePay(' + p.id + ')">Ubah Status</button></td></tr>';
+  });
+}
+
+function renderDevice() {
+  const b = $('table-device');
+  b.innerHTML = '';
+  if (!D.smartlock || !D.smartlock.length) {
+    b.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Belum ada perangkat terdaftar.</td></tr>';
+    return;
+  }
+  D.smartlock.forEach(function(s) {
+    const kosTag = s.kos_name ? ' <small class="text-muted">(' + esc(s.kos_name) + ')</small>' : '';
+    b.innerHTML += '<tr><td><strong>Kamar ' + esc(s.room_number) + '</strong>' + kosTag + '</td><td>' + esc(s.serial_number || '-') + '</td><td>' + esc(s.verification_code || '-') + '</td><td><button class="btn btn-sm btn-outline-primary me-2" onclick="openDevice(' + s.id + ')"><i class="fa-solid fa-pen me-1"></i> Edit</button><button class="btn btn-sm btn-info text-white" onclick="verifyDevice(' + s.id + ')"><i class="fa-solid fa-signal me-1"></i> Cek Status Device</button></td></tr>';
+  });
+}
+
+async function verifyDevice(rid) {
+  info('Memeriksa Koneksi...', 'Menghubungi server EZVIZ untuk verifikasi perangkat...', 'SIMULATION');
+  const r = await api('/api/smartlock/' + rid + '/verify', 'POST');
+  info(r.title || 'Hasil Verifikasi Device', r.message, r.status);
+}
+
+async function loadDoorLogs() {
+  D.door = (await api('/api/door-logs')) || [];
+  renderDoorLogs();
+}
+
+async function syncDoorLogs(manual) {
+  const btn = $('btn-sync-door');
+  if (manual && btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyinkronkan...'; }
+  const r = await api('/api/locks/open-logs/sync', 'POST', { force: !!manual });
+  if (manual && btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-door-open me-2"></i>Sinkron Riwayat Pintu'; }
+  if (r && r.message && (manual || !r.ok || r.new > 0)) {
+    D.doorSyncMsg = (new Date().toLocaleTimeString('id-ID')) + ' - ' + r.message;
+    D.doorSyncOk = !!r.ok;
+  }
+  await loadDoorLogs();
+  if (r && (r.new > 0 || manual)) {
+    D.audit = (await api('/api/audit')) || [];
+    renderLogs();
+  }
+  if (manual) info('Sinkron Riwayat Pintu', (r && r.message) || 'Tidak ada respons dari server.', !!(r && r.ok));
+}
+
+async function diagDoorLogs() {
+  const rid = $('door-diag-room').value;
+  if (!rid) { info('Diagnosis', 'Belum ada kamar dengan Serial Number terisi.', false); return; }
+  info('Diagnosis', 'Mengambil data mentah dari EZVIZ...', 'SIMULATION');
+  const r = await api('/api/locks/' + rid + '/open-logs/raw');
+  if (!r || !r.hasil) { info('Diagnosis', (r && r.message) || 'Gagal mengambil data diagnosis.', false); return; }
+  let t = 'Waktu server (UTC): ' + r.server_utc_now + '\nWaktu aplikasi: ' + r.app_tz_now + '\nKoreksi jam: ' + r.koreksi_jam + ' jam\n' +
+          'Tersimpan di database: ' + r.tersimpan_di_db + ' (terbaru UTC ' + (r.terbaru_di_db_utc || '-') + ')\n';
+  r.hasil.forEach(function(h) {
+    t += '\n[' + h.variasi + '] start=' + (h.params.start || '-') + ' end=' + (h.params.end || '-') + '\n  hasil: ' + (h.ok ? 'OK' : 'GAGAL ' + (h.code || '') + ' ' + (h.pesan || '')) +
+         ', ' + h.jumlah + ' data, terlama UTC ' + (h.terlama_utc || '-') + ', terbaru UTC ' + (h.terbaru_utc || '-') + '\n  10 terbaru:\n';
+    h.data.forEach(function(x) { t += '  - UTC ' + x.utc + ' | aplikasi ' + x.app_tz + ' | ' + x.lockUserName + ' | ' + x.openType + '\n'; });
+  });
+  info('Diagnosis Data EZVIZ', t, !!r.ok);
+}
+
+function renderDoorLogs() {
+  const sel = $('door-diag-room');
+  if (sel && !sel.options.length) {
+    (D.smartlock || []).filter(function(x) { return x.serial_number; }).forEach(function(x) {
+      sel.innerHTML += '<option value="' + x.id + '">Kamar ' + esc(x.room_number) + (x.kos_name ? ' - ' + esc(x.kos_name) : '') + '</option>';
+    });
+  }
+  const b = $('table-door-logs');
+  b.innerHTML = '';
+  const m = $('door-sync-msg');
+  m.className = 'small mb-2 ' + (D.doorSyncOk === false ? 'text-danger' : 'text-muted');
+  m.innerText = D.doorSyncMsg ? ('Sinkron terakhir: ' + D.doorSyncMsg) : '';
+  const rows = D.door || [];
+  if (!rows.length) {
+    b.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada riwayat buka pintu. Klik "Sinkron Riwayat Pintu" (butuh Live Mode aktif, Serial Number terisi, dan koneksi ke EZVIZ).</td></tr>';
+    return;
+  }
+  rows.forEach(function(l) {
+    b.innerHTML += '<tr><td><small>' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room) + '</strong>' + (l.kos_name ? '<br><small class="text-muted">' + esc(l.kos_name) + '</small>' : '') + '</td><td><span class="badge bg-info text-dark">' + esc(l.method) + '</span></td><td><span class="badge bg-success">' + esc(l.status) + '</span></td></tr>';
+  });
+}
+
+function renderLogs() {
+  const b = $('table-logs');
+  b.innerHTML = '';
+  (D.audit || []).forEach(function(l) {
+    b.innerHTML += '<tr><td><small>' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room || '-') + '</strong></td><td><span class="badge ' + (l.source === 'pintu' ? 'bg-info text-dark' : 'bg-secondary') + '">' + (l.source === 'pintu' ? '<i class="fa-solid fa-door-open me-1"></i>' : '') + esc(l.action) + '</span></td><td><span class="badge ' + (l.result === 'OK' ? 'bg-success' : 'bg-danger') + '">' + esc(l.result) + '</span></td><td>' + esc(l.message) + '</td></tr>';
+  });
+}
+
+// ------------------------------------------------------------------ KAMAR
+function openAddRoomModal() {
+  $('room-id').value = '';
+  $('room-number').value = '';
+  $('room-price').value = '';
+  $('modalRoomTitle').innerText = 'Tambah Kamar Baru';
+  modal('modalRoom').show();
+}
+
+function openEditRoomModal(rid) {
+  const r = (D.rooms || []).find(function(x) { return x.id === rid; });
+  if (!r) return;
+  $('room-id').value = r.id;
+  $('room-number').value = r.room_number;
+  $('room-price').value = r.price || 0;
+  if ($('room-owner-id')) $('room-owner-id').value = r.owner_id;
+  $('modalRoomTitle').innerText = 'Edit Kamar ' + r.room_number;
+  modal('modalRoom').show();
+}
+
+$('formRoom').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const rid = $('room-id').value;
+  const payload = {
+    room_number: $('room-number').value,
+    price: $('room-price').value
+  };
+  if (CURRENT_USER && CURRENT_USER.is_master && $('room-owner-id')) {
+    payload.owner_id = $('room-owner-id').value;
+  }
+
+  const url = rid ? ('/api/rooms/' + rid) : '/api/rooms';
+  const method = rid ? 'PUT' : 'POST';
+  const r = await api(url, method, payload);
+
+  modal('modalRoom').hide();
+  info(r.ok ? 'Berhasil' : 'Peringatan', r.message, r.ok ? true : 'error');
+  fetchData();
+});
+
+async function deleteRoom(rid) {
+  if (!confirm('Hapus unit kamar ini?')) return;
+  const r = await api('/api/rooms/' + rid, 'DELETE');
+  info(r.ok ? 'Berhasil' : 'Peringatan', r.message, r.ok ? true : 'error');
+  fetchData();
+}
+
+// ------------------------------------------------------------------ CHECK-IN & SINKRONISASI
+function openCheckIn(rid) {
+  const r = (D.rooms || []).find(function(x) { return x.id === rid; });
+  $('checkin-room-id').value = rid;
+  $('modal-room-title').innerText = r ? r.room_number : '';
+  $('formCheckIn').reset();
+  $('checkin-price').value = r ? (r.price || '') : '';
+  modal('modalCheckIn').show();
+}
+
+$('formCheckIn').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const emailVal = $('checkin-email').value.trim();
+  const nameVal = $('checkin-nama').value.trim();
+
+  if (!emailVal || !emailVal.includes('@') || !emailVal.includes('.')) {
+    info('Validasi Gagal', 'Email wajib diisi dengan format yang valid (contoh: penyewa@email.com).', 'error');
+    return;
+  }
+
+  if (!nameVal) {
+    info('Validasi Gagal', 'Nama penghuni wajib diisi.', 'error');
+    return;
+  }
+
+  const startArr = $('checkin-start').value.split('T');
+  const endArr = $('checkin-end').value.split('T');
+
+  if (!startArr[0] || !endArr[0]) {
+    info('Validasi Gagal', 'Tanggal mulai dan akhir sewa wajib diisi.', 'error');
+    return;
+  }
+
+  const r = await api('/api/checkin', 'POST', {
+    room_id: $('checkin-room-id').value,
+    name: nameVal,
+    email: emailVal,
+    phone: $('checkin-telp').value,
+    start_date: startArr[0], start_time: startArr[1] || '00:00',
+    end_date: endArr[0], end_time: endArr[1] || '00:00',
+    price: $('checkin-price').value
+  });
+
+  modal('modalCheckIn').hide();
+  
+  let modalType = true;
+  if (!r.ok) {
+    modalType = 'error';
+  } else if (r.warning) {
+    modalType = 'warning';
+  }
+
+  info(r.ok ? (r.warning ? 'Check-In Tersimpan (Peringatan Perangkat)' : 'Check-In Berhasil') : 'Gagal Check-In', r.message, modalType);
+  fetchData();
+});
+
+function openDevice(rid) {
+  const s = (D.smartlock || []).find(function(x) { return x.id === rid; });
+  if (!s) return;
+  $('device-room-id').value = rid;
+  $('device-sn').value = s.serial_number || '';
+  $('device-code').value = s.verification_code || '';
+  modal('modalDevice').show();
+}
+
+$('formDevice').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const id = $('device-room-id').value;
+  const r = await api('/api/smartlock/' + id, 'PUT', {
+    serial_number: $('device-sn').value,
+    verification_code: $('device-code').value
+  });
+  modal('modalDevice').hide();
+  info(r.ok ? 'Berhasil' : 'Peringatan', 'Pengaturan Smartlock berhasil diperbarui.', r.ok ? true : 'error');
+  fetchData();
+});
+
+async function doCheckOut(tid) {
+  if (!confirm('Proses check-out penyewa ini?')) return;
+  const r = await api('/api/tenants/' + tid + '/checkout', 'POST');
+  info(r.ok ? (r.warning ? 'Check-Out Berhasil (Ada Peringatan)' : 'Check-Out Berhasil') : 'Peringatan', r.message, r.ok ? (r.warning ? 'warning' : true) : 'error');
+  fetchData();
+}
+
+async function togglePay(pid) {
+  const p = (D.payments || []).find(function(x) { return x.id === pid; });
+  if (!p) return;
+  await api('/api/payments/' + pid, 'PUT', { status: p.status === 'LUNAS' ? 'BELUM' : 'LUNAS' });
+  fetchData();
+}
+
+async function runCommissioning() {
+  const box = $('commissioning-results');
+  box.innerHTML = '<div class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Menjalankan pengujian fungsi lengkap...</div>';
+  const r = await api('/api/admin/commissioning', 'POST');
+
+  let html = '<div class="alert ' + (r.ok ? 'alert-success' : 'alert-warning') + '">Waktu Pengujian: ' + (r.timestamp || '-') + '</div><ul class="list-group">';
+  (r.results || []).forEach(function(res) {
+    const badge = (res.status === 'OK') ? 'bg-success' : ((res.status === 'WARN') ? 'bg-warning text-dark' : 'bg-danger');
+    html += '<li class="list-group-item d-flex justify-content-between align-items-center"><div><strong>' + esc(res.test) + '</strong><br><small class="text-muted">' + esc(res.detail) + '</small></div><span class="badge ' + badge + '">' + esc(res.status) + '</span></li>';
+  });
+  html += '</ul>';
+  box.innerHTML = html;
+}
+
+// ------------------------------------------------------------------ MASTER OWNER KOS
+async function loadMasterOwners() {
+  const list = await api('/api/master/owners');
+  const b = $('table-master-owners');
+  b.innerHTML = '';
+  (list || []).forEach(function(o) {
+    b.innerHTML += '<tr><td>' + o.id + '</td><td><strong>' + esc(o.kos_name) + '</strong></td><td>' + esc(o.name) + '</td><td>' + esc(o.phone) + '</td><td><span class="badge ' + (o.is_master ? 'bg-danger' : 'bg-primary') + '">' + (o.is_master ? 'Master Admin' : 'Pemilik Kos') + '</span></td><td>' + (!o.is_master ? '<button class="btn btn-sm btn-outline-primary me-1" onclick="openEditOwnerModal(' + o.id + ')"><i class="fa-solid fa-pen"></i> Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteMasterOwner(' + o.id + ')"><i class="fa-solid fa-trash"></i> Hapus</button>' : '-') + '</td></tr>';
+  });
+}
+
+function openAddOwnerModal() {
+  $('owner-edit-id').value = '';
+  $('formAddOwner').reset();
+  $('box-owner-pw').classList.remove('hidden');
+  $('modalOwnerTitle').innerText = 'Tambah Nama Kos Baru';
+  modal('modalAddOwner').show();
+}
+
+function openEditOwnerModal(oid) {
+  const o = (D.owners || []).find(function(x) { return x.id === oid; });
+  if (!o) return;
+  $('owner-edit-id').value = o.id;
+  $('owner-kos-nama').value = o.kos_name;
+  $('owner-nama').value = o.name;
+  $('owner-telp').value = o.phone;
+  $('box-owner-pw').classList.add('hidden');
+  $('modalOwnerTitle').innerText = 'Edit Nama Kos & Pemilik';
+  modal('modalAddOwner').show();
+}
+
+$('formAddOwner').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const oid = $('owner-edit-id').value;
+  const payload = {
+    kos_name: $('owner-kos-nama').value,
+    name: $('owner-nama').value,
+    phone: $('owner-telp').value
+  };
+
+  if (!oid) {
+    payload.password = $('owner-pw').value;
+  }
+
+  const url = oid ? ('/api/master/owners/' + oid) : '/api/master/owners';
+  const method = oid ? 'PUT' : 'POST';
+  const r = await api(url, method, payload);
+
+  modal('modalAddOwner').hide();
+  info(r.ok ? 'Berhasil' : 'Peringatan', r.message, r.ok ? true : 'error');
+  loadMasterOwners();
+  fetchData();
+});
+
+async function deleteMasterOwner(oid) {
+  if (!confirm('Hapus Nama Kos ini beserta seluruh kamar & datanya?')) return;
+  const r = await api('/api/master/owners/' + oid, 'DELETE');
+  info(r.ok ? 'Berhasil' : 'Peringatan', r.message, r.ok ? true : 'error');
+  loadMasterOwners();
+  fetchData();
+}
+
+// ------------------------------------------------------------------ PASSWORD SEMENTARA DI PINTU
+function populateLockRooms() {
+  const sel = $('locks-room');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- Pilih Kamar --</option>';
+  (D.smartlock || []).filter(function(s) { return s.serial_number; }).forEach(function(s) {
+    sel.innerHTML += '<option value="' + s.id + '">Kamar ' + esc(s.room_number) + (s.kos_name ? ' (' + esc(s.kos_name) + ')' : '') + ' - ' + esc(s.serial_number) + '</option>';
+  });
+  sel.value = cur;
+}
+
+function lockBadge(cat) {
+  const m = { 'AKTIF': 'bg-success', 'KADALUARSA': 'bg-secondary', 'CHECKOUT': 'bg-warning text-dark', 'TIDAK TERPAKAI': 'bg-danger' };
+  return '<span class="badge ' + (m[cat] || 'bg-dark') + '">' + esc(cat) + '</span>';
+}
+
+function fmtEz(t) { return esc(String(t || '').replace('T', ' ').substring(0, 16)); }
+
+async function loadLockPasswords() {
+  const rid = $('locks-room').value;
+  const b = $('table-locks');
+  if (!rid) { b.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Pilih kamar untuk memuat daftar.</td></tr>'; return; }
+  b.innerHTML = '<tr><td colspan="7" class="text-center text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Mengambil daftar dari smartlock...</td></tr>';
+  $('locks-status').innerHTML = '';
+  const r = await api('/api/locks/' + rid + '/passwords');
+  if (!r.ok) {
+    b.innerHTML = '';
+    $('locks-status').innerHTML = '<div class="alert alert-danger mb-0" style="white-space:pre-line">' + esc(r.message || 'Gagal memuat daftar.') + '</div>';
+    return;
+  }
+  const items = r.items || [];
+  if (!items.length) {
+    b.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Tidak ada password sementara di pintu ini.</td></tr>';
+    $('locks-status').innerHTML = '<div class="text-muted small">0 / 10 slot terpakai.</div>';
+    return;
+  }
+  const bersih = items.filter(function(p) { return p.category !== 'AKTIF'; }).length;
+  $('locks-status').innerHTML = '<div class="text-muted small">' + items.length + ' / 10 slot terpakai, ' + bersih + ' dapat dibersihkan.</div>';
+  b.innerHTML = '';
+  items.forEach(function(p) {
+    b.innerHTML += '<tr><td>' + esc(p.passwordID) + '</td><td>' + esc(p.passwordName) + (p.tenant ? '<br><small class="text-muted">' + esc(p.tenant) + '</small>' : '') + '</td><td><small>' + esc(p.account) + '</small></td><td><small>' + fmtEz(p.startTimeStr) + ' s/d<br>' + fmtEz(p.endTimeStr) + '</small></td><td>' + (p.availableTimes === -1 ? 'Tak terbatas' : esc(p.availableTimes)) + '</td><td>' + lockBadge(p.category) + '</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteLockPassword(' + Number(p.passwordID) + ', \'' + esc(p.category) + '\')"><i class="fa-solid fa-trash"></i> Hapus</button></td></tr>';
+  });
+}
+
+async function deleteLockPassword(pid, cat) {
+  const rid = $('locks-room').value;
+  if (!rid) return;
+  if (cat === 'AKTIF' && !confirm('Password ini milik penyewa yang masih AKTIF. Tetap hapus? (penyewa tidak bisa masuk sampai Anda menekan Sync)')) return;
+  if (cat !== 'AKTIF' && !confirm('Hapus password ID ' + pid + ' dari pintu?')) return;
+  const r = await api('/api/locks/' + rid + '/passwords/' + pid, 'DELETE');
+  info(r.ok ? 'Berhasil' : 'Gagal', r.message, r.ok ? true : 'error');
+  loadLockPasswords();
+  fetchData();
+}
+
+async function cleanupLock(mode) {
+  const rid = $('locks-room').value;
+  if (!rid) { info('Validasi Gagal', 'Pilih kamar terlebih dahulu.', 'error'); return; }
+  const q = (mode === 'all')
+    ? 'HAPUS SEMUA password sementara di pintu kamar ini, termasuk milik penyewa aktif? Penyewa aktif perlu di-Sync ulang.'
+    : 'Bersihkan password kadaluarsa, tidak terpakai, dan milik penyewa yang sudah check-out? (Penyewa aktif aman.)';
+  if (!confirm(q)) return;
+  $('locks-status').innerHTML = '<div class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Membersihkan...</div>';
+  const r = await api('/api/locks/' + rid + '/cleanup', 'POST', { mode: mode });
+  info(r.ok ? 'Pembersihan Selesai' : 'Pembersihan Bermasalah', r.message, r.ok ? true : 'warning');
+  loadLockPasswords();
+  fetchData();
+}
+
+async function cleanupAllRooms() {
+  if (!confirm('Bersihkan otomatis (kadaluarsa/tidak terpakai/check-out) di SEMUA kamar yang punya smartlock? Proses dapat memakan waktu.')) return;
+  $('locks-status').innerHTML = '<div class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Membersihkan semua kamar...</div>';
+  const r = await api('/api/locks/cleanup-all', 'POST');
+  info(r.ok ? 'Pembersihan Selesai' : 'Pembersihan Bermasalah', r.message, r.ok ? true : 'warning');
+  $('locks-status').innerHTML = '';
+  loadLockPasswords();
+  fetchData();
+}
+
+// Beri atribut data-label pada sel tabel agar bisa tampil sebagai kartu di HP
+function labelTable(t) {
+  const heads = Array.from(t.querySelectorAll('thead th')).map(function(h) { return h.textContent.trim(); });
+  t.querySelectorAll('tbody tr').forEach(function(tr) {
+    Array.from(tr.children).forEach(function(td, i) {
+      if (td.colSpan > 1) return;
+      if (heads[i]) td.setAttribute('data-label', heads[i]);
+    });
+  });
+}
+
+function initStackedTables() {
+  document.querySelectorAll('table.table-stack').forEach(function(t) {
+    const tb = t.querySelector('tbody');
+    if (!tb) return;
+    labelTable(t);
+    new MutationObserver(function() { labelTable(t); }).observe(tb, { childList: true });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() { initStackedTables(); boot(); });
+</script>
+</body>
+</html>
