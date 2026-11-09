@@ -3,93 +3,399 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1e293b">
+<meta name="theme-color" content="#0f172a">
 <title>Smart Guest House Cloud - EZVIZ</title>
+
+<!-- Fonts & Libraries -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
-.sidebar{background:#1e293b;color:#fff}
-.sidebar-inner{background:#1e293b;color:#fff;--bs-offcanvas-width:280px}
-.sidebar a{color:#94a3b8;text-decoration:none;padding:12px 20px;display:block;border-radius:6px;margin-bottom:6px;font-weight:500;cursor:pointer}
-.sidebar a:hover,.sidebar a.active{background:#0ea5e9;color:#fff}
-.content-area{padding:16px;min-width:0}
-.tab-content-item{display:none}.tab-content-item.active{display:block}
-.card-kamar{border-top:4px solid #10b981}.card-kamar.terisi{border-top-color:#ef4444}
-.hidden{display:none!important}
-#authBox{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#1e293b;padding:16px}
-#app{padding:0}
-#app>.row{--bs-gutter-x:0}
-
-/* Top bar (hanya tampil di HP) */
-.topbar{position:sticky;top:0;z-index:1030;display:flex;align-items:center;gap:12px;background:#1e293b;color:#fff;
-  padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
-.topbar .btn-menu{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;
-  color:#fff;border:1px solid #475569;border-radius:8px;background:transparent}
-.topbar .btn-menu:active{background:#0ea5e9}
-.topbar-title{font-weight:700;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-
-.btn-icon.btn{width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center}
-.kos-filter{width:100%}
-.head-actions{width:100%}
-.head-actions .btn{flex:1 1 auto}
-#info-body .alert{word-break:break-word}
-
-@media(min-width:576px){
-  .kos-filter{width:auto;min-width:250px}
-  .head-actions{width:auto}
-  .head-actions .btn{flex:0 0 auto}
+:root {
+  --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --bg-app: #f8fafc;
+  --sidebar-bg: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  --sidebar-color: #94a3b8;
+  --ezviz-blue: #0ea5e9;
+  --ezviz-hover: #0284c7;
+  --card-radius: 16px;
+  --btn-radius: 10px;
 }
-@media(min-width:768px){
-  .content-area{padding:30px}
-  .sidebar{min-height:100vh;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto}
-}
-@media(max-width:767.98px){
-  .sidebar-inner{overflow-y:auto}
-  .sidebar a{padding:14px 18px}
-  .content-area h3{font-size:1.25rem}
-  .stat-row h6{font-size:.8rem}
-  .stat-row h2{font-size:1.6rem}
-  .stat-row h4{font-size:1.3rem}
-  .btn-sm{padding:.4rem .75rem}
 
-  /* Tabel berubah jadi kartu per baris di HP */
-  .table-stack thead{display:none}
-  .table-stack,.table-stack tbody,.table-stack tr,.table-stack td{display:block;width:100%}
-  .table-stack tr{border:1px solid #e2e8f0;border-radius:10px;margin-bottom:12px;padding:6px 12px;background:#fff}
-  .table-stack td{border:0!important;padding:6px 0!important;text-align:right;box-shadow:none!important;background:transparent!important;overflow-wrap:anywhere}
-  .table-stack td::before{content:attr(data-label);float:left;max-width:42%;margin-right:12px;font-weight:600;color:#64748b;text-align:left}
-  .table-stack td::after{content:"";display:block;clear:both}
-  .table-stack td:not([data-label]){text-align:center}
-  .table-stack td:not([data-label])::before{content:none}
-  .table-stack td .d-flex{justify-content:flex-end}
-  .table-stack td .btn{margin-bottom:2px}
+body {
+  background-color: var(--bg-app);
+  font-family: var(--font-main);
+  color: #334155;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Glassmorphism Auth */
+#authBox {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0284c7 100%);
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 410px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ezviz-logo-img {
+  max-height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  background: var(--sidebar-bg);
+  color: #fff;
+}
+
+.sidebar-inner {
+  background: transparent;
+  color: #fff;
+  --bs-offcanvas-width: 280px;
+}
+
+.brand-header {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar a {
+  color: #94a3b8;
+  text-decoration: none;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: var(--btn-radius);
+  margin-bottom: 4px;
+  font-weight: 500;
+  font-size: 0.93rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.sidebar a i {
+  width: 20px;
+  text-align: center;
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.sidebar a:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar a:hover i {
+  transform: scale(1.1);
+}
+
+.sidebar a.active {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.35);
+}
+
+.sidebar a.active i {
+  color: #ffffff;
+}
+
+.content-area {
+  padding: 24px;
+  min-width: 0;
+}
+
+.tab-content-item { display: none; }
+.tab-content-item.active { display: block; animation: fadeIn 0.25s ease-in-out; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom Cards */
+.card {
+  border-radius: var(--card-radius);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-kamar {
+  border: 1px solid #e2e8f0;
+  border-top: 5px solid #10b981;
+  position: relative;
+  overflow: hidden;
+}
+
+.card-kamar.terisi {
+  border-top-color: #ef4444;
+}
+
+.card-kamar:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
+}
+
+/* Stat Cards */
+.stat-card {
+  border-radius: var(--card-radius);
+  color: #fff;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card .stat-icon {
+  position: absolute;
+  right: 15px;
+  bottom: 10px;
+  font-size: 3.5rem;
+  opacity: 0.15;
+}
+
+/* Custom Badges & Form UI */
+.badge {
+  padding: 0.5em 0.8em;
+  font-weight: 600;
+  border-radius: 6px;
+  letter-spacing: 0.2px;
+}
+
+.form-control, .form-select {
+  border-radius: 10px;
+  padding: 0.625rem 0.875rem;
+  border-color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.15);
+}
+
+.btn {
+  border-radius: var(--btn-radius);
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border: none;
+  box-shadow: 0 4px 10px rgba(14, 165, 233, 0.25);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  transform: translateY(-1px);
+}
+
+.btn-icon.btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.hidden { display: none !important; }
+
+/* Topbar Mobile */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0f172a;
+  color: #fff;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.topbar .btn-menu {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.topbar-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kos-filter { width: 100%; }
+.head-actions { width: 100%; }
+.head-actions .btn { flex: 1 1 auto; }
+#info-body .alert { word-break: break-word; }
+
+/* SVG Logo Ezviz Inline Component */
+.ezviz-logo-svg {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@media(min-width: 576px) {
+  .kos-filter { width: auto; min-width: 250px; }
+  .head-actions { width: auto; }
+  .head-actions .btn { flex: 0 0 auto; }
+}
+
+@media(min-width: 768px) {
+  .content-area { padding: 32px; }
+  .sidebar {
+    min-height: 100vh;
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-y: auto;
+  }
+}
+
+@media(max-width: 767.98px) {
+  .sidebar-inner { overflow-y: auto; }
+  .content-area { padding: 16px; }
+  .content-area h3 { font-size: 1.3rem; }
+  .stat-row h6 { font-size: .8rem; }
+  .stat-row h2 { font-size: 1.5rem; }
+  .stat-row h4 { font-size: 1.2rem; }
+  .btn-sm { padding: .4rem .75rem; }
+
+  /* Table Stacked Mode */
+  .table-stack thead { display: none; }
+  .table-stack, .table-stack tbody, .table-stack tr, .table-stack td { display: block; width: 100%; }
+  .table-stack tr {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  }
+  .table-stack td {
+    border: 0 !important;
+    padding: 6px 0 !important;
+    text-align: right;
+    box-shadow: none !important;
+    background: transparent !important;
+    overflow-wrap: anywhere;
+  }
+  .table-stack td::before {
+    content: attr(data-label);
+    float: left;
+    max-width: 45%;
+    margin-right: 12px;
+    font-weight: 600;
+    color: #64748b;
+    text-align: left;
+    font-size: 0.85rem;
+  }
+  .table-stack td::after { content: ""; display: block; clear: both; }
+  .table-stack td:not([data-label]) { text-align: center; }
+  .table-stack td:not([data-label])::before { content: none; }
+  .table-stack td .d-flex { justify-content: flex-end; }
+  .table-stack td .btn { margin-bottom: 2px; }
+}
+
+/* ===== Logo EZVIZ asli (tertanam) ===== */
+.ezlogo{display:block;background-repeat:no-repeat;background-position:center;background-size:contain;flex:none}
+.ezlogo-light{background-image:url(data:image/png;base64,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)}
+.ezlogo-dark{background-image:url(data:image/png;base64,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)}
+.logo-login{width:220px;height:58px;margin:0 auto}
+.logo-side{width:150px;height:40px}
+.logo-top{width:114px;height:30px}
+
+/* ===== Penanda proses (anti klik ganda) ===== */
+#netbar{position:fixed;top:0;left:0;height:3px;width:0;opacity:0;z-index:2000;background:linear-gradient(90deg,#00a0e9,#8cc63f);transition:width .4s ease,opacity .3s ease}
+.btn.is-busy{pointer-events:none;opacity:.85}
+
+/* ===== Status masa sewa ===== */
+.lease-ok{color:#15803d;font-weight:600}
+.lease-warn{color:#b45309;font-weight:600}
+.lease-expired{color:#dc2626;font-weight:600}
+
+/* ===== Filter kamar ===== */
+.chip{border:1px solid #cbd5e1;background:#fff;color:#475569;border-radius:999px;padding:.35rem .85rem;font-size:.85rem;font-weight:600}
+.chip b{margin-left:.25rem;color:#0284c7}
+.chip.active{background:#0284c7;border-color:#0284c7;color:#fff}
+.chip.active b{color:#fff}
+
+/* ===== Navigasi bawah (HP) ===== */
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:1025;display:flex;background:#fff;border-top:1px solid #e2e8f0;padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -4px 12px rgba(15,23,42,.06)}
+.bn{flex:1;border:0;background:none;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.7rem;font-weight:600;color:#64748b;min-height:56px}
+.bn i{font-size:1.15rem}
+.bn.active{color:#0284c7}
+@media(max-width:767.98px){#app{padding-bottom:76px}.btn,.form-control,.form-select{min-height:44px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div id="netbar" aria-hidden="true"></div>
 
 <!-- Form Login -->
 <div id="authBox">
-  <div class="card shadow p-4" style="width:100%;max-width:380px">
-    <div class="text-center mb-3">
-      <i class="fa-solid fa-house-lock fa-2x text-info"></i>
-      <h5 class="fw-bold mt-2 mb-0">Smart Guest House</h5>
-      <small class="text-muted">Multi-Pemilik Kos Cloud</small>
+  <div class="card auth-card p-4 p-sm-5">
+    <div class="text-center mb-4">
+      <!-- EZVIZ Vector Logo Header -->
+      <div class="d-flex justify-content-center align-items-center mb-3">
+        <span class="ezlogo ezlogo-light logo-login" role="img" aria-label="EZVIZ - Creating Easy Smart Homes"></span>
+      </div>
+      <h5 class="fw-bold text-dark mb-1">Selamat Datang</h5>
+      <p class="text-muted small">Silakan masuk ke sistem manajemen kos cloud</p>
     </div>
+
     <form id="formLogin" onsubmit="return false;">
-      <div class="mb-2">
-        <label class="form-label">Nomor Telepon</label>
-        <input type="tel" id="login-phone" class="form-control" placeholder="Contoh: 085242306022" required>
-      </div>
       <div class="mb-3">
-        <label class="form-label">Password</label>
-        <input type="password" id="login-pw" class="form-control" placeholder="Password" required>
+        <label class="form-label fw-semibold text-secondary small">Nomor Telepon</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-solid fa-phone"></i></span>
+          <input type="tel" id="login-phone" class="form-control border-start-0 ps-0" placeholder="Contoh: 085242306022" required>
+        </div>
       </div>
-      <button class="btn btn-primary w-100" type="submit">Masuk Aplikasi</button>
+      <div class="mb-4">
+        <label class="form-label fw-semibold text-secondary small">Password</label>
+        <div class="input-group">
+          <span class="input-group-text bg-light text-muted border-end-0"><i class="fa-solid fa-lock"></i></span>
+          <input type="password" id="login-pw" class="form-control border-start-0 border-end-0 ps-0" placeholder="Masukkan password" required><button type="button" class="btn btn-light border border-start-0 text-muted" id="pwToggle" aria-label="Tampilkan password"><i class="fa-solid fa-eye"></i></button>
+        </div>
+      </div>
+      <button class="btn btn-primary w-100 py-2.5" type="submit"><i class="fa-solid fa-right-to-bracket me-2"></i>Masuk Aplikasi</button>
     </form>
-    <div id="authMsg" class="text-danger small mt-2 text-center"></div>
+    <div id="authMsg" class="text-danger small mt-3 text-center fw-medium"></div>
   </div>
 </div>
 
@@ -99,80 +405,134 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
   <!-- Top bar mobile -->
   <div class="topbar d-md-none">
     <button class="btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
-    <div class="topbar-title" id="topbarTitle">Guest House</div>
+    <div class="d-flex align-items-center gap-2">
+      <span class="ezlogo ezlogo-dark logo-top" role="img" aria-label="EZVIZ"></span>
+      <span class="topbar-title ms-1" id="topbarTitle">Guest House</span>
+    </div>
   </div>
 
+<nav class="bottom-nav d-md-none" aria-label="Navigasi cepat">
+    <button type="button" class="bn active" data-tab="dashboard" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie"></i><span>Beranda</span></button>
+    <button type="button" class="bn" data-tab="kamar" onclick="switchTab('kamar')"><i class="fa-solid fa-door-open"></i><span>Kamar</span></button>
+    <button type="button" class="bn" data-tab="penghuni" onclick="switchTab('penghuni')"><i class="fa-solid fa-users"></i><span>Penghuni</span></button>
+    <button type="button" class="bn" data-tab="tagihan" onclick="switchTab('tagihan')"><i class="fa-solid fa-file-invoice-dollar"></i><span>Tagihan</span></button>
+    <button type="button" class="bn" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu"><i class="fa-solid fa-bars"></i><span>Menu</span></button>
+  </nav>
+
 <div class="row">
+  <!-- Sidebar Navigation -->
   <div class="col-md-3 col-lg-2 sidebar p-0">
    <div class="sidebar-inner offcanvas-md offcanvas-start p-3" tabindex="-1" id="sidebarMenu" aria-label="Menu utama">
     <div class="d-md-none text-end"><button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Tutup menu"></button></div>
-    <div class="text-center my-3">
-      <i class="fa-solid fa-house-lock fa-2x text-info mb-2"></i>
-      <h5 class="fw-bold text-white mb-0" id="userKosDisplay">Guest House</h5>
-      <small class="text-info fw-bold" id="userDisplayName">-</small>
+    
+    <!-- Sidebar Brand Logo Header -->
+    <div class="brand-header text-center my-2">
+      <div class="d-flex justify-content-center align-items-center mb-2">
+        <span class="ezlogo ezlogo-dark logo-side" role="img" aria-label="EZVIZ"></span>
+      </div>
+      <h6 class="fw-bold text-white mb-0" id="userKosDisplay">Guest House</h6>
+      <small class="text-info fw-semibold" id="userDisplayName">-</small>
     </div>
-    <hr class="border-secondary">
-    <nav class="nav flex-column">
-      <a id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard</a>
-      <a id="nav-kamar" onclick="switchTab('kamar')"><i class="fa-solid fa-door-open me-2"></i>Manajemen Kamar</a>
-      <a id="nav-penghuni" onclick="switchTab('penghuni')"><i class="fa-solid fa-users me-2"></i>Penghuni</a>
-      <a id="nav-tagihan" onclick="switchTab('tagihan')"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Tagihan &amp; Biaya</a>
-      <a id="nav-device" onclick="switchTab('device')"><i class="fa-solid fa-key me-2"></i>Setting Smartlock</a>
-      <a id="nav-locks" onclick="switchTab('locks'); populateLockRooms();"><i class="fa-solid fa-lock me-2"></i>Password Pintu</a>
-      <a id="nav-diag" onclick="switchTab('diag'); runCommissioning(); populateTestRooms();"><i class="fa-solid fa-stethoscope me-2"></i>Testing &amp; Commissioning</a>
-      <a id="nav-logs" onclick="switchTab('logs')"><i class="fa-solid fa-clock-rotate-left me-2"></i>Log Aktivitas</a>
+
+    <nav class="nav flex-column mt-3">
+      <a id="nav-dashboard" class="active" onclick="switchTab('dashboard')"><i class="fa-solid fa-chart-pie"></i>Dashboard</a>
+      <a id="nav-kamar" onclick="switchTab('kamar')"><i class="fa-solid fa-door-open"></i>Manajemen Kamar</a>
+      <a id="nav-penghuni" onclick="switchTab('penghuni')"><i class="fa-solid fa-users"></i>Penghuni</a>
+      <a id="nav-tagihan" onclick="switchTab('tagihan')"><i class="fa-solid fa-file-invoice-dollar"></i>Tagihan &amp; Biaya</a>
+      <a id="nav-device" onclick="switchTab('device')"><i class="fa-solid fa-key"></i>Setting Smartlock</a>
+      <a id="nav-locks" onclick="switchTab('locks'); populateLockRooms();"><i class="fa-solid fa-lock"></i>Password Pintu</a>
+      <a id="nav-diag" onclick="switchTab('diag'); runCommissioning(); populateTestRooms();"><i class="fa-solid fa-stethoscope"></i>Testing &amp; Commissioning</a>
+      <a id="nav-logs" onclick="switchTab('logs')"><i class="fa-solid fa-clock-rotate-left"></i>Log Aktivitas</a>
       
       <!-- Menu Khusus Akun Master -->
-      <a id="nav-master-owners" class="master-only hidden" onclick="switchTab('master-owners'); loadMasterOwners();"><i class="fa-solid fa-users-gear me-2"></i>Kelola Nama Kos</a>
+      <a id="nav-master-owners" class="master-only hidden" onclick="switchTab('master-owners'); loadMasterOwners();"><i class="fa-solid fa-users-gear"></i>Kelola Nama Kos</a>
       
-      <a onclick="logout()" class="mt-3 text-danger"><i class="fa-solid fa-right-from-bracket me-2"></i>Keluar</a>
+      <a onclick="logout()" class="mt-4 text-danger-emphasis"><i class="fa-solid fa-right-from-bracket"></i>Keluar</a>
     </nav>
    </div>
   </div>
 
   <div class="col-md-9 col-lg-10 content-area">
+    <div id="expiryBanner" class="d-none" role="alert"></div>
 
     <!-- Tab Dashboard -->
     <div id="tab-dashboard" class="tab-content-item active">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-        <h3 class="fw-bold mb-0">Ringkasan Operasional</h3>
+        <div>
+          <h3 class="fw-bold mb-1">Ringkasan Operasional</h3>
+          <p class="text-muted small mb-0">Pantau status kamar, penghuni, dan pendapatan kos secara real-time</p>
+        </div>
         <div class="master-only hidden kos-filter">
-          <select id="dash-kos-filter" class="form-select border-primary" onchange="fetchData()">
+          <select id="dash-kos-filter" class="form-select border-primary-subtle shadow-sm" onchange="fetchData()">
             <option value="">-- Semua Kos (Agregat) --</option>
           </select>
         </div>
       </div>
-      <div class="row g-2 g-md-3 mb-4 stat-row">
-        <div class="col-4 col-md-3"><div class="card bg-primary text-white shadow-sm p-2 p-md-3 h-100"><h6>Total Kamar</h6><h2 id="stat-total">0</h2></div></div>
-        <div class="col-4 col-md-3"><div class="card bg-success text-white shadow-sm p-2 p-md-3 h-100"><h6>Kamar Terisi</h6><h2 id="stat-terisi">0</h2></div></div>
-        <div class="col-4 col-md-3"><div class="card bg-info text-white shadow-sm p-2 p-md-3 h-100"><h6>Kamar Kosong</h6><h2 id="stat-kosong">0</h2></div></div>
-        <div class="col-12 col-md-3"><div class="card bg-dark text-white shadow-sm p-3 h-100"><h6>Pendapatan Bulan Ini</h6><h4 id="stat-pendapatan">Rp 0</h4></div></div>
+
+      <div class="row g-3 mb-4 stat-row">
+        <div class="col-6 col-md-3">
+          <div class="stat-card bg-primary shadow-sm h-100">
+            <i class="fa-solid fa-door-closed stat-icon"></i>
+            <h6 class="text-white-50 fw-semibold mb-2">Total Kamar</h6>
+            <h2 class="fw-bold mb-0" id="stat-total">0</h2>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card bg-success shadow-sm h-100">
+            <i class="fa-solid fa-user-check stat-icon"></i>
+            <h6 class="text-white-50 fw-semibold mb-2">Kamar Terisi</h6>
+            <h2 class="fw-bold mb-0" id="stat-terisi">0</h2>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card bg-info shadow-sm h-100">
+            <i class="fa-solid fa-door-open stat-icon"></i>
+            <h6 class="text-white-50 fw-semibold mb-2">Kamar Kosong</h6>
+            <h2 class="fw-bold mb-0" id="stat-kosong">0</h2>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="stat-card bg-dark shadow-sm h-100">
+            <i class="fa-solid fa-wallet stat-icon"></i>
+            <h6 class="text-white-50 fw-semibold mb-2">Pendapatan Bulan Ini</h6>
+            <h4 class="fw-bold mb-0" id="stat-pendapatan">Rp 0</h4>
+          </div>
+        </div>
       </div>
+
       <div class="card shadow-sm p-4">
-        <h5 class="fw-bold mb-3">Grafik Pendapatan Bulanan</h5>
+        <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-chart-column text-primary me-2"></i>Grafik Pendapatan Bulanan</h5>
         <canvas id="incomeChart" style="max-height:280px"></canvas>
       </div>
     </div>
 
     <!-- Tab Manajemen Kamar -->
     <div id="tab-kamar" class="tab-content-item">
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Manajemen Kamar Kos</h3>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+          <h3 class="fw-bold mb-1">Manajemen Kamar Kos</h3>
+          <p class="text-muted small mb-0">Kelola status penyewaan dan harga sewa kamar</p>
+        </div>
         <div class="d-flex flex-wrap gap-2 head-actions">
           <div class="master-only hidden kos-filter">
-            <select id="kamar-kos-filter" class="form-select border-primary" onchange="fetchData()">
+            <select id="kamar-kos-filter" class="form-select border-primary-subtle shadow-sm" onchange="fetchData()">
               <option value="">-- Semua Nama Kos --</option>
             </select>
           </div>
           <button class="btn btn-primary master-only hidden" onclick="openAddRoomModal()"><i class="fa-solid fa-plus me-1"></i>Tambah Kamar</button>
         </div>
       </div>
+      <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <div class="input-group" style="max-width:290px"><span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span><input id="room-search" class="form-control" placeholder="Cari kamar / penghuni" oninput="ROOM_Q=this.value;renderKamar()"></div>
+        <div id="room-chips" class="d-flex flex-wrap gap-2"></div>
+      </div>
       <div class="row g-3" id="container-kamar"></div>
     </div>
 
     <!-- Tab Penghuni -->
     <div id="tab-penghuni" class="tab-content-item">
-      <h3 class="fw-bold mb-3">Daftar Penghuni Active &amp; History</h3>
+      <h3 class="fw-bold mb-1">Daftar Penghuni Active &amp; History</h3>
+      <p class="text-muted small mb-3">Riwayat penyewa serta status sinkronisasi password ke EZVIZ Cloud</p>
       <div class="card shadow-sm p-3"><div class="table-responsive">
         <table class="table-stack table table-hover align-middle">
           <thead class="table-light"><tr><th>Kamar / Kos</th><th>Nama</th><th>Email (Wajib)</th><th>No. HP</th><th>Masa Sewa</th><th>Status Access</th><th>Aksi</th></tr></thead>
@@ -182,7 +542,8 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
 
     <!-- Tab Tagihan -->
     <div id="tab-tagihan" class="tab-content-item">
-      <h3 class="fw-bold mb-3">Catatan Tagihan</h3>
+      <h3 class="fw-bold mb-1">Catatan Tagihan</h3>
+      <p class="text-muted small mb-3">Pantau dan ubah status pembayaran sewa kamar</p>
       <div class="card shadow-sm p-3"><div class="table-responsive">
         <table class="table-stack table table-hover align-middle">
           <thead class="table-light"><tr><th>Kamar / Kos</th><th>Penyewa</th><th>Masa Sewa</th><th>Jumlah</th><th>Status Pembayaran</th><th>Aksi</th></tr></thead>
@@ -193,11 +554,30 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
     <!-- Tab Setting Smartlock -->
     <div id="tab-device" class="tab-content-item">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Setting &amp; Verifikasi Smartlock Perangkat</h3>
+        <div>
+          <h3 class="fw-bold mb-1">Setting &amp; Verifikasi Smartlock Perangkat</h3>
+          <p class="text-muted small mb-0">Atur Serial Number dan Verification Code EZVIZ per unit kamar</p>
+        </div>
         <div class="master-only hidden kos-filter">
-          <select id="device-kos-filter" class="form-select border-primary" onchange="fetchData()">
+          <select id="device-kos-filter" class="form-select border-primary-subtle shadow-sm" onchange="fetchData()">
             <option value="">-- Semua Nama Kos --</option>
           </select>
+        </div>
+      </div>
+      <div class="card shadow-sm p-3 mb-3" id="ez-acct">
+        <h5 class="fw-bold mb-2" id="ez-title">Akun EZVIZ</h5>
+        <div id="ez-hint" class="alert alert-info small mb-0 d-none">Pilih nama kos pada filter di atas untuk mengatur akun EZVIZ (App Key &amp; App Secret) kos tersebut.</div>
+        <div id="ez-form">
+          <p class="small mb-2" id="ez-status"></p>
+          <div class="row g-2">
+            <div class="col-12 col-md-4"><label class="form-label small fw-semibold mb-1">App Key</label><input id="ez-key" class="form-control" autocomplete="off" placeholder="App Key EZVIZ Open Platform"></div>
+            <div class="col-12 col-md-4"><label class="form-label small fw-semibold mb-1">App Secret</label><input id="ez-secret" type="password" class="form-control" autocomplete="new-password" placeholder="App Secret"></div>
+            <div class="col-12 col-md-4"><label class="form-label small fw-semibold mb-1">Area Domain (opsional)</label><input id="ez-domain" class="form-control" placeholder="https://isgpopen.ezvizlife.com"></div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-primary" onclick="saveEzviz()"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Akun EZVIZ</button>
+            <button type="button" class="btn btn-outline-primary" onclick="testEzviz()"><i class="fa-solid fa-plug me-2"></i>Tes Koneksi</button>
+          </div>
         </div>
       </div>
       <div class="card shadow-sm p-3"><div class="table-responsive">
@@ -209,13 +589,15 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
 
     <!-- Tab Password Sementara di Pintu -->
     <div id="tab-locks" class="tab-content-item">
-      <h3 class="fw-bold mb-3">Password Sementara di Pintu</h3>
+      <h3 class="fw-bold mb-1">Password Sementara di Pintu</h3>
+      <p class="text-muted small mb-3">Kelola slot sandi temporer yang tersimpan secara hardware pada perangkat EZVIZ Smartlock</p>
+      
       <div class="card shadow-sm p-3 mb-3">
         <p class="text-muted small mb-3">Lihat password sementara yang tersimpan di smartlock (maksimal 10 slot), hapus satu per satu, atau bersihkan otomatis yang <b>kadaluarsa</b>, <b>tidak terpakai</b>, dan milik penyewa yang sudah <b>check-out</b>. Password penyewa aktif tidak ikut terhapus pada pembersihan otomatis.</p>
         <div class="row g-2 align-items-center">
           <div class="col-md-4"><select id="locks-room" class="form-select" onchange="loadLockPasswords()"><option value="">-- Pilih Kamar --</option></select></div>
           <div class="col-auto"><button class="btn btn-outline-primary" onclick="loadLockPasswords()"><i class="fa-solid fa-rotate me-1"></i>Muat Daftar</button></div>
-          <div class="col-auto"><button class="btn btn-warning fw-bold" onclick="cleanupLock('auto')"><i class="fa-solid fa-broom me-1"></i>Bersihkan Otomatis (Kamar Ini)</button></div>
+          <div class="col-auto"><button class="btn btn-warning fw-bold text-dark" onclick="cleanupLock('auto')"><i class="fa-solid fa-broom me-1"></i>Bersihkan Otomatis (Kamar Ini)</button></div>
           <div class="col-auto"><button class="btn btn-danger" onclick="cleanupLock('all')"><i class="fa-solid fa-trash me-1"></i>Hapus Semua (Kamar Ini)</button></div>
           <div class="col-auto"><button class="btn btn-dark" onclick="cleanupAllRooms()"><i class="fa-solid fa-broom me-1"></i>Bersihkan Otomatis Semua Kamar</button></div>
         </div>
@@ -231,12 +613,15 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
     <!-- Tab Testing & Commissioning -->
     <div id="tab-diag" class="tab-content-item">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Testing &amp; Commissioning</h3>
+        <div>
+          <h3 class="fw-bold mb-1">Testing &amp; Commissioning</h3>
+          <p class="text-muted small mb-0">Uji keandalan integrasi sistem dan respon API EZVIZ Open Platform</p>
+        </div>
         <button class="btn btn-primary" onclick="runCommissioning()"><i class="fa-solid fa-vial me-2"></i>Jalankan Pengujian Sistem Base</button>
       </div>
 
       <!-- Modul Diagnosa Uji Sinkronisasi Perangkat -->
-      <div class="card shadow-sm p-3 mb-4 border-primary">
+      <div class="card shadow-sm p-3 mb-4 border-primary-subtle">
         <h5 class="fw-bold text-primary mb-2"><i class="fa-solid fa-bug me-2"></i>Pengujian Uji Coba Error Sinkronisasi OTAP</h5>
         <p class="text-muted small mb-3">Pilih kamar untuk mensimulasikan penambahan password temporer secara langsung ke API EZVIZ V3 dan menganalisis kode balikan error server.</p>
         <div class="row g-2 align-items-center">
@@ -246,7 +631,7 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
             </select>
           </div>
           <div class="col-md-3">
-            <button class="btn btn-warning w-100 fw-bold" onclick="runSyncTest()"><i class="fa-solid fa-paper-plane me-1"></i> Tes Kirim OTAP</button>
+            <button class="btn btn-warning w-100 fw-bold text-dark" onclick="runSyncTest()"><i class="fa-solid fa-paper-plane me-1"></i> Tes Kirim OTAP</button>
           </div>
         </div>
         <div id="sync-test-result" class="mt-3"></div>
@@ -261,23 +646,26 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
     <!-- Tab Log Aktivitas -->
     <div id="tab-logs" class="tab-content-item">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Log Audit Aktivitas &amp; Riwayat Masuk Pintu</h3>
+        <div>
+          <h3 class="fw-bold mb-1">Log Audit Aktivitas &amp; Riwayat Masuk Pintu</h3>
+          <p class="text-muted small mb-0">Rekam jejak akses pintu dan aktivitas pengguna</p>
+        </div>
         <button class="btn btn-outline-primary btn-sm" id="btn-sync-door" onclick="syncDoorLogs(true)"><i class="fa-solid fa-door-open me-2"></i>Sinkron Riwayat Pintu</button>
       </div>
-      <div class="card shadow-sm p-3"><div class="table-responsive">
-        <table class="table-stack table table-sm table-hover">
+      <div class="card shadow-sm p-3 mb-4"><div class="table-responsive">
+        <table class="table-stack table table-sm table-hover align-middle">
           <thead><tr><th>Waktu</th><th>User (No. HP)</th><th>Kamar</th><th>Aksi</th><th>Status</th><th>Detail</th></tr></thead>
           <tbody id="table-logs"></tbody>
         </table></div></div>
 
-      <h4 class="fw-bold mt-4 mb-2"><i class="fa-solid fa-door-open me-2"></i>Riwayat Masuk Pintu</h4>
+      <h5 class="fw-bold mt-4 mb-2"><i class="fa-solid fa-door-open me-2 text-primary"></i>Riwayat Masuk Pintu Hardware</h5>
       <div id="door-sync-msg" class="small text-muted mb-2" style="white-space: pre-line;"></div>
-      <div class="input-group input-group-sm mb-2" style="max-width: 460px;">
+      <div class="input-group input-group-sm mb-3" style="max-width: 460px;">
         <select id="door-diag-room" class="form-select"></select>
         <button class="btn btn-outline-secondary" onclick="diagDoorLogs()"><i class="fa-solid fa-stethoscope me-1"></i>Diagnosis Data EZVIZ</button>
       </div>
       <div class="card shadow-sm p-3"><div class="table-responsive">
-        <table class="table-stack table table-sm table-hover">
+        <table class="table-stack table table-sm table-hover align-middle">
           <thead><tr><th>Waktu</th><th>User</th><th>Kamar</th><th>Metode Buka</th><th>Status</th></tr></thead>
           <tbody id="table-door-logs"></tbody>
         </table></div></div>
@@ -286,12 +674,15 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
     <!-- Tab Kelola Kos (Khusus Master) -->
     <div id="tab-master-owners" class="tab-content-item master-only hidden">
       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Manajemen Nama Kos &amp; Pemilik</h3>
+        <div>
+          <h3 class="fw-bold mb-1">Manajemen Nama Kos &amp; Pemilik</h3>
+          <p class="text-muted small mb-0">Kelola daftar kos dan akun pengelola kos pada platform cloud</p>
+        </div>
         <button class="btn btn-success" onclick="openAddOwnerModal()"><i class="fa-solid fa-house-medical me-2"></i>Tambah Nama Kos Baru</button>
       </div>
       <div class="card shadow-sm p-3"><div class="table-responsive">
         <table class="table-stack table table-hover align-middle">
-          <thead class="table-light"><tr><th>ID</th><th>Nama Kos</th><th>Pemilik</th><th>No. Telepon Login</th><th>Tipe</th><th>Aksi</th></tr></thead>
+          <thead class="table-light"><tr><th>ID</th><th>Nama Kos</th><th>Pemilik</th><th>No. Telepon Login</th><th>Tipe</th><th>Masa Berlaku</th><th>Akun EZVIZ</th><th>Aksi</th></tr></thead>
           <tbody id="table-master-owners"></tbody>
         </table></div></div>
     </div>
@@ -301,105 +692,117 @@ body{background:#f4f6f9;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif}
 </div>
 
 <!-- Modal Check-In -->
-<div class="modal fade" id="modalCheckIn" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title fw-bold">Check-In Kamar <span id="modal-room-title"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
+<div class="modal fade" id="modalCheckIn" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg">
+  <div class="modal-header bg-light"><h5 class="modal-title fw-bold">Check-In Kamar <span id="modal-room-title" class="text-primary"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-4">
     <form id="formCheckIn" onsubmit="return false;">
       <input type="hidden" id="checkin-room-id">
-      <div class="mb-2">
-        <label class="form-label">Nama Penghuni</label>
-        <input id="checkin-nama" class="form-control" required>
-      </div>
-      <div class="mb-2">
-        <label class="form-label fw-bold text-primary">Email Penghuni (WAJIB)</label>
-        <input type="email" id="checkin-email" class="form-control" placeholder="contoh: penyewa@email.com" required>
-        <small class="text-muted">Akses pintu dikirimkan ke email ini.</small>
-      </div>
-      <div class="mb-2">
-        <label class="form-label">No. HP (Opsional)</label>
-        <input id="checkin-telp" class="form-control" placeholder="+62812345678">
-      </div>
-      <div class="row g-2 mb-2">
-        <div class="col-12 col-sm-6"><label class="form-label">Mulai Sewa</label><input type="datetime-local" id="checkin-start" class="form-control" required></div>
-        <div class="col-12 col-sm-6"><label class="form-label">Akhir Sewa</label><input type="datetime-local" id="checkin-end" class="form-control" required></div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nama Penghuni</label>
+        <input id="checkin-nama" class="form-control" placeholder="Nama lengkap" required>
       </div>
       <div class="mb-3">
-        <label class="form-label">Biaya Sewa (Rp)</label>
-        <input type="number" id="checkin-price" class="form-control" min="0">
+        <label class="form-label fw-bold text-primary">Email Penghuni (WAJIB)</label>
+        <input type="email" id="checkin-email" class="form-control" placeholder="contoh: penyewa@email.com" required>
+        <small class="text-muted">Akses pintu smartlock dikirimkan ke email ini.</small>
       </div>
-      <button class="btn btn-primary w-100" type="submit">Proses Check-In</button>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">No. HP (Opsional)</label>
+        <input id="checkin-telp" class="form-control" placeholder="+62812345678">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-12 col-sm-6"><label class="form-label fw-semibold">Mulai Sewa</label><input type="datetime-local" id="checkin-start" class="form-control" required></div>
+        <div class="col-12 col-sm-6"><label class="form-label fw-semibold">Akhir Sewa</label><input type="datetime-local" id="checkin-end" class="form-control" required></div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Biaya Sewa (Rp)</label>
+        <input type="number" id="checkin-price" class="form-control" min="0" inputmode="numeric">
+        <div id="checkin-price-hint" class="form-text fw-semibold text-primary"></div>
+      </div>
+      <button class="btn btn-primary w-100 py-2" type="submit"><i class="fa-solid fa-check me-2"></i>Proses Check-In</button>
     </form>
   </div>
 </div></div></div>
 
 <!-- Modal Tambah/Edit Kamar -->
-<div class="modal fade" id="modalRoom" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title fw-bold" id="modalRoomTitle">Tambah Kamar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
+<div class="modal fade" id="modalRoom" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg">
+  <div class="modal-header bg-light"><h5 class="modal-title fw-bold" id="modalRoomTitle">Tambah Kamar</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-4">
     <form id="formRoom" onsubmit="return false;">
       <input type="hidden" id="room-id">
-      <div class="mb-2 master-only hidden">
-        <label class="form-label">Nama Kos</label>
+      <div class="mb-3 master-only hidden">
+        <label class="form-label fw-semibold">Nama Kos</label>
         <select id="room-owner-id" class="form-select"></select>
       </div>
-      <div class="mb-2">
-        <label class="form-label">Nomor / Nama Kamar</label>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nomor / Nama Kamar</label>
         <input id="room-number" class="form-control" placeholder="Contoh: 101" required>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Harga Sewa Kamar (Rp)</label>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Harga Sewa Kamar (Rp)</label>
         <input type="number" id="room-price" class="form-control" placeholder="1000000" min="0">
       </div>
-      <button class="btn btn-primary w-100" type="submit">Simpan Kamar</button>
+      <button class="btn btn-primary w-100 py-2" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Kamar</button>
     </form>
   </div>
 </div></div></div>
 
 <!-- Modal Setting Smartlock -->
-<div class="modal fade" id="modalDevice" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Setting Smartlock</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
+<div class="modal fade" id="modalDevice" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg">
+  <div class="modal-header bg-light"><h5 class="modal-title fw-bold">Setting Smartlock EZVIZ</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-4">
     <form id="formDevice" onsubmit="return false;">
       <input type="hidden" id="device-room-id">
-      <div class="mb-3"><label class="form-label">Serial Number (SN) Perangkat</label><input id="device-sn" class="form-control" placeholder="Contoh: BK6286559" required></div>
-      <div class="mb-3"><label class="form-label">Verification Code</label><input id="device-code" class="form-control" placeholder="Contoh: XIBGHI" required></div>
-      <button class="btn btn-success w-100" type="submit">Simpan Konfigurasi</button>
+      <div class="mb-3"><label class="form-label fw-semibold">Serial Number (SN) Perangkat</label><input id="device-sn" class="form-control" placeholder="Contoh: BK6286559" required></div>
+      <div class="mb-4"><label class="form-label fw-semibold">Verification Code</label><input id="device-code" class="form-control" placeholder="Contoh: XIBGHI" required></div>
+      <button class="btn btn-success w-100 py-2" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Konfigurasi</button>
     </form>
   </div>
 </div></div></div>
 
 <!-- Modal Tambah/Edit Kos -->
-<div class="modal fade" id="modalAddOwner" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title fw-bold" id="modalOwnerTitle">Tambah Nama Kos Baru</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-  <div class="modal-body">
+<div class="modal fade" id="modalAddOwner" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow-lg">
+  <div class="modal-header bg-light"><h5 class="modal-title fw-bold" id="modalOwnerTitle">Tambah Nama Kos Baru</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+  <div class="modal-body p-4">
     <form id="formAddOwner" onsubmit="return false;">
       <input type="hidden" id="owner-edit-id">
-      <div class="mb-2">
-        <label class="form-label">Nama Kos</label>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nama Kos</label>
         <input id="owner-kos-nama" class="form-control" placeholder="Contoh: Kos Melati Utama" required>
       </div>
-      <div class="mb-2">
-        <label class="form-label">Nama Pemilik / Pengelola</label>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nama Pemilik / Pengelola</label>
         <input id="owner-nama" class="form-control" placeholder="Contoh: Bpk Ahmad" required>
       </div>
-      <div class="mb-2">
-        <label class="form-label">Nomor Telepon Login</label>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nomor Telepon Login</label>
         <input type="tel" id="owner-telp" class="form-control" placeholder="081234567890" required>
       </div>
-      <div class="mb-3" id="box-owner-pw">
-        <label class="form-label">Password Akun Login</label>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Masa Berlaku Akun</label>
+        <input type="date" id="owner-valid" class="form-control">
+        <div class="d-flex flex-wrap gap-1 mt-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extendValid(1)">+1 bulan</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extendValid(3)">+3 bulan</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="extendValid(12)">+1 tahun</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="$('owner-valid').value=''">Tanpa batas</button>
+        </div>
+        <small class="text-muted">Jika habis, pemilik tidak bisa login. Peringatan muncul H-2.</small>
+      </div>
+      <div class="mb-4" id="box-owner-pw">
+        <label class="form-label fw-semibold">Password Akun Login</label>
         <input type="password" id="owner-pw" class="form-control" placeholder="Default: gringary">
       </div>
-      <button class="btn btn-success w-100" type="submit">Simpan Data Kos</button>
+      <button class="btn btn-success w-100 py-2" type="submit"><i class="fa-solid fa-floppy-disk me-2"></i>Simpan Data Kos</button>
     </form>
   </div>
 </div></div></div>
 
 <!-- Modal Notifikasi Terstruktur -->
-<div class="modal fade" id="modalInfo" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content shadow">
+<div class="modal fade" id="modalInfo" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0 shadow-lg">
   <div class="modal-header bg-light"><h5 class="modal-title fw-bold" id="info-title">Notifikasi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
   <div class="modal-body fs-6 p-4" id="info-body"></div>
-  <div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Tutup</button></div>
+  <div class="modal-footer border-0"><button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal">Tutup</button></div>
 </div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -417,8 +820,44 @@ const esc = function(s) {
 };
 const modal = function(id) { return bootstrap.Modal.getOrCreateInstance($(id)); };
 
-async function api(url, method, body) {
+let pending = 0, lastBtn = null, lastBtnAt = 0;
+const inflight = {};
+document.addEventListener('click', function(e) {
+  const b = e.target.closest && e.target.closest('button');
+  if (b && !b.classList.contains('bn') && !b.hasAttribute('data-bs-toggle')) { lastBtn = b; lastBtnAt = Date.now(); }
+}, true);
+document.addEventListener('submit', function(e) { if (e.submitter) { lastBtn = e.submitter; lastBtnAt = Date.now(); } }, true);
+
+function netbar() {
+  const b = $('netbar');
+  if (pending > 0) { b.style.opacity = 1; b.style.width = '75%'; }
+  else { b.style.width = '100%'; setTimeout(function() { if (!pending) { b.style.opacity = 0; b.style.width = '0'; } }, 300); }
+}
+function busyOn(b) {
+  const label = b.textContent.trim();
+  b.dataset.orig = b.innerHTML;
+  b.disabled = true; b.classList.add('is-busy'); b.setAttribute('aria-busy', 'true');
+  b.innerHTML = '<span class="spinner-border spinner-border-sm' + (label ? ' me-2' : '') + '"></span>' + (label ? 'Memproses...' : '');
+}
+function busyOff(b) {
+  if (b.dataset.orig === undefined) return;
+  b.innerHTML = b.dataset.orig; delete b.dataset.orig;
+  b.disabled = false; b.classList.remove('is-busy'); b.removeAttribute('aria-busy');
+}
+
+async function api(url, method, body, opts) {
   method = method || 'GET';
+  const write = method !== 'GET';
+  const key = method + url + (body ? JSON.stringify(body) : '');
+  if (write && inflight[key]) return new Promise(function() {});   // permintaan sama sedang berjalan: abaikan klik ganda
+  let btn = null;
+  if (write) {
+    inflight[key] = 1;
+    if (!(opts && opts.silent) && lastBtn && Date.now() - lastBtnAt < 30000 && document.body.contains(lastBtn) && !lastBtn.disabled) btn = lastBtn;
+    lastBtn = null;
+    if (btn) busyOn(btn);
+  }
+  pending++; netbar();
   try {
     const res = await fetch(url, {
       method: method,
@@ -427,10 +866,16 @@ async function api(url, method, body) {
     });
     let data = {};
     try { data = await res.json(); } catch (e) {}
-    if (res.status === 401) { location.reload(); }
+    if (res.status === 401 && url !== '/api/login') {
+      if (data && data.expired) sessionStorage.setItem('ezmsg', data.message);
+      location.reload();
+    }
     return data;
   } catch (err) {
     return { ok: false, message: 'Gagal terhubung ke server Flask.' };
+  } finally {
+    pending--; netbar();
+    if (write) { delete inflight[key]; if (btn) busyOff(btn); }
   }
 }
 
@@ -442,7 +887,7 @@ function info(title, message, statusType) {
     const u = String(statusType).toUpperCase();
     if (u === 'WARNING' || u === 'OFFLINE' || u === 'SIMULATION') kind = 'warning';
     else if (u === 'ONLINE' || u === 'OK') kind = 'success';
-    else kind = 'danger';   // ERROR, WRONG_SN, NET_ERROR, NOT_DEVICE_OWNER, TOKEN_ERROR, dst.
+    else kind = 'danger';
   }
   const icons = {
     success: '<i class="fa-solid fa-circle-check text-success me-2"></i>',
@@ -466,15 +911,17 @@ function switchTab(t) {
   document.querySelectorAll('.tab-content-item').forEach(function(e) { e.classList.remove('active'); });
   document.querySelectorAll('.sidebar a').forEach(function(e) { e.classList.remove('active'); });
   $('tab-' + t).classList.add('active');
+  document.querySelectorAll('.bn[data-tab]').forEach(function(b) { b.classList.toggle('active', b.dataset.tab === t); });
   const navEl = $('nav-' + t);
   if (navEl) navEl.classList.add('active');
 }
 
 async function boot() {
+  const saved = sessionStorage.getItem('ezmsg');
+  if (saved) { $('authMsg').innerText = saved; sessionStorage.removeItem('ezmsg'); }
   const me = await api('/api/me');
-  if (me && me.authenticated) {
-    enterApp(me);
-  }
+  if (me && me.authenticated) enterApp(me);
+  else if (me && me.expired) $('authMsg').innerText = me.message;
 }
 
 $('formLogin').addEventListener('submit', async function(e) {
@@ -510,6 +957,9 @@ function enterApp(user) {
     e.classList.toggle('hidden', !user.is_master);
   });
 
+  if (user.days_left != null && user.days_left <= 2) {
+    info('Masa Berlaku Akun Hampir Habis', 'Masa berlaku akun kos Anda ' + expiryText(user.days_left, user.valid_until) + '\nHubungi Master Administrator untuk perpanjangan agar akun tidak terkunci.', 'WARNING');
+  }
   fetchData().then(function() { syncDoorLogs(false); });
 }
 
@@ -556,6 +1006,8 @@ async function fetchData() {
   loadDoorLogs();
   populateTestRooms();
   populateLockRooms();
+  renderExpiryBanner();
+  loadEzvizAccount();
 }
 
 function populateKosDropdowns() {
@@ -636,34 +1088,68 @@ function renderDashboard() {
       datasets: [{
         label: 'Pendapatan (Rp)',
         data: (d.chart || []).map(function(c) { return c.s; }),
-        backgroundColor: '#0ea5e9'
+        backgroundColor: '#0ea5e9',
+        borderRadius: 8
       }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      }
     }
   });
+}
+
+let ROOM_FILTER = 'all', ROOM_Q = '';
+function roomMatch(r) {
+  const f = ROOM_FILTER;
+  if (f === 'terisi' && r.status !== 'TERISI') return false;
+  if (f === 'kosong' && r.status === 'TERISI') return false;
+  if ((f === 'warn' || f === 'expired') && r.lease_state !== f) return false;
+  const q = ROOM_Q.trim().toLowerCase();
+  return !q || (String(r.room_number) + ' ' + (r.tenant || '')).toLowerCase().indexOf(q) >= 0;
+}
+function renderChips() {
+  const rooms = D.rooms || [];
+  const count = function(f) {
+    return rooms.filter(function(r) {
+      return f === 'all' || (f === 'terisi' && r.status === 'TERISI') || (f === 'kosong' && r.status !== 'TERISI') || r.lease_state === f;
+    }).length;
+  };
+  $('room-chips').innerHTML = [['all', 'Semua'], ['terisi', 'Terisi'], ['kosong', 'Kosong'], ['warn', 'Segera habis'], ['expired', 'Habis']].map(function(d) {
+    return '<button type="button" class="chip' + (ROOM_FILTER === d[0] ? ' active' : '') + '" onclick="ROOM_FILTER=\'' + d[0] + '\';renderKamar()">' + d[1] + ' <b>' + count(d[0]) + '</b></button>';
+  }).join('');
 }
 
 function renderKamar() {
   const c = $('container-kamar');
   c.innerHTML = '';
+  renderChips();
+  const roomList = (D.rooms || []).filter(roomMatch);
 
   if (!D.rooms || !D.rooms.length) {
     c.innerHTML = '<div class="col-12"><div class="card p-5 text-center text-muted border-0 shadow-sm">Belum ada unit kamar pada pilihan ini. Kamar baru ditambahkan oleh Master Administrator.</div></div>';
     return;
   }
 
-  D.rooms.forEach(function(r) {
+  if (!roomList.length) { c.innerHTML = '<div class="col-12 text-center text-muted py-4">Tidak ada kamar yang cocok dengan filter.</div>'; return; }
+  roomList.forEach(function(r) {
     const t = (D.tenants || []).find(function(x) { return x.room_id === r.id && x.status === 'AKTIF'; });
     const terisi = (r.status === 'TERISI');
-    const kosTag = r.kos_name ? '<div class="small text-muted mb-1"><i class="fa-solid fa-house me-1"></i>' + esc(r.kos_name) + '</div>' : '';
+    const kosTag = r.kos_name ? '<div class="small text-muted mb-2"><i class="fa-solid fa-house me-1"></i>' + esc(r.kos_name) + '</div>' : '';
     let tenantInfo = '';
 
     if (terisi && t) {
-      tenantInfo = '<div class="p-2 bg-light rounded mb-2 small"><strong>' + esc(t.name) + '</strong><br><span class="text-muted">' + esc(t.email) + '</span><br><span class="text-danger">' + esc(t.start_datetime) + ' s/d ' + esc(t.end_datetime) + '</span></div><button class="btn btn-sm btn-outline-danger w-100" onclick="doCheckOut(' + t.id + ')">Check-Out</button>';
+      tenantInfo = '<div class="p-2.5 bg-light rounded-3 mb-3 small"><strong><i class="fa-solid fa-user text-primary me-1"></i>' + esc(t.name) + '</strong><br><span class="text-muted ms-3">' + esc(t.email) + '</span><br><span class="ms-3 d-inline-block">' + leaseHtml(r) + '</span></div><button class="btn btn-sm btn-outline-danger w-100 fw-bold" onclick="doCheckOut(' + t.id + ')"><i class="fa-solid fa-arrow-right-from-bracket me-1"></i>Check-Out</button>';
     } else {
-      tenantInfo = '<button class="btn btn-sm btn-success w-100" onclick="openCheckIn(' + r.id + ')">Check-In Baru</button>';
+      tenantInfo = '<button class="btn btn-sm btn-success w-100 fw-bold" onclick="openCheckIn(' + r.id + ')"><i class="fa-solid fa-user-plus me-1"></i>Check-In Baru</button>';
     }
 
-    c.innerHTML += '<div class="col-12 col-sm-6 col-lg-4 col-xxl-3"><div class="card card-kamar ' + (terisi ? 'terisi' : '') + ' shadow-sm"><div class="card-body"><div class="d-flex justify-content-between align-items-center mb-1"><h5 class="fw-bold mb-0">Kamar ' + esc(r.room_number) + '</h5><div><button class="btn btn-sm btn-icon text-secondary" onclick="openEditRoomModal(' + r.id + ')"><i class="fa-solid fa-pen"></i></button>' + ((CURRENT_USER && CURRENT_USER.is_master) ? '<button class="btn btn-sm btn-icon text-danger" onclick="deleteRoom(' + r.id + ')"><i class="fa-solid fa-trash"></i></button>' : '') + '</div></div>' + kosTag + '<p class="fw-bold text-primary mb-2">' + rp(r.price) + '</p>' + tenantInfo + '</div></div></div>';
+    const badgeStatus = terisi ? '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fa-solid fa-user-check me-1"></i>Terisi</span>' : '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fa-solid fa-door-open me-1"></i>Kosong</span>';
+
+    c.innerHTML += '<div class="col-12 col-sm-6 col-lg-4 col-xxl-3"><div class="card card-kamar ' + (terisi ? 'terisi' : '') + ' shadow-sm"><div class="card-body p-3.5"><div class="d-flex justify-content-between align-items-center mb-1"><h5 class="fw-bold mb-0">Kamar ' + esc(r.room_number) + '</h5><div>' + badgeStatus + '<button class="btn btn-sm btn-icon text-secondary ms-1" onclick="openEditRoomModal(' + r.id + ')"><i class="fa-solid fa-pen"></i></button>' + ((CURRENT_USER && CURRENT_USER.is_master) ? '<button class="btn btn-sm btn-icon text-danger" onclick="deleteRoom(' + r.id + ')"><i class="fa-solid fa-trash"></i></button>' : '') + '</div></div>' + kosTag + '<p class="fw-bold text-primary mb-3 fs-5">' + ((terisi && r.tenant_price != null) ? rp(r.tenant_price) + ' <small class="text-muted fw-normal fs-6">sewa aktif</small>' : rp(r.price)) + '</p>' + tenantInfo + '</div></div></div>';
   });
 }
 
@@ -671,18 +1157,18 @@ function renderPenghuni() {
   const b = $('table-penghuni');
   b.innerHTML = '';
   if (!D.tenants || !D.tenants.length) {
-    b.innerHTML = '<tr><td colspan="7" class="text-muted text-center">Belum ada penyewa terdaftar.</td></tr>';
+    b.innerHTML = '<tr><td colspan="7" class="text-muted text-center py-4">Belum ada penyewa terdaftar.</td></tr>';
     return;
   }
   D.tenants.forEach(function(t) {
     const aktif = (t.status === 'AKTIF');
     const kosTag = t.kos_name ? ' <small class="text-muted">(' + esc(t.kos_name) + ')</small>' : '';
     const isSynced = (t.ezviz_sync_status === 'TEMP PASSWORD TERSINKRON');
-    const badgeBg = isSynced ? 'bg-success' : 'bg-warning text-dark';
+    const badgeBg = isSynced ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
     
     const syncBtn = aktif ? '<button class="btn btn-sm btn-light border ms-2 p-1" title="Sinkronkan Ulang ke EZVIZ" onclick="resyncTenant(' + t.id + ')"><i class="fa-solid fa-rotate text-primary"></i> Sync</button>' : '';
 
-    b.innerHTML += '<tr><td><strong>' + esc(t.room_number) + '</strong>' + kosTag + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.email) + '</td><td>' + esc(t.phone || '-') + '</td><td><small>' + esc(t.start_datetime) + ' s/d<br>' + esc(t.end_datetime) + '</small></td><td><div class="d-flex align-items-center"><span class="badge ' + badgeBg + '">' + esc(t.ezviz_sync_status) + '</span>' + syncBtn + '</div></td><td>' + (aktif ? '<button class="btn btn-sm btn-danger" onclick="doCheckOut(' + t.id + ')">Check-Out</button>' : '-') + '</td></tr>';
+    b.innerHTML += '<tr><td><strong>' + esc(t.room_number) + '</strong>' + kosTag + '</td><td>' + esc(t.name) + '</td><td>' + esc(t.email) + '</td><td>' + esc(t.phone || '-') + '</td><td>' + (aktif ? leaseHtml(t) : '<small class="text-muted">' + esc(t.start_datetime) + ' s/d<br>' + esc(t.end_datetime) + '</small>') + '</td><td><div class="d-flex align-items-center"><span class="badge ' + badgeBg + '">' + esc(t.ezviz_sync_status) + '</span>' + syncBtn + '</div></td><td>' + (aktif ? '<button class="btn btn-sm btn-outline-danger" onclick="doCheckOut(' + t.id + ')">Check-Out</button>' : '-') + '</td></tr>';
   });
 }
 
@@ -702,10 +1188,14 @@ async function resyncTenant(tid) {
 function renderTagihan() {
   const b = $('table-tagihan');
   b.innerHTML = '';
+  if (!D.payments || !D.payments.length) {
+    b.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">Belum ada catatan tagihan.</td></tr>';
+    return;
+  }
   (D.payments || []).forEach(function(p) {
     const lunas = (p.status === 'LUNAS');
     const kosTag = p.kos_name ? ' <small class="text-muted">(' + esc(p.kos_name) + ')</small>' : '';
-    b.innerHTML += '<tr><td><strong>' + esc(p.room_number) + '</strong>' + kosTag + '</td><td>' + esc(p.tenant || '-') + '</td><td><small>' + esc(p.start_date) + ' s/d ' + esc(p.end_date) + '</small></td><td>' + rp(p.amount) + '</td><td><span class="badge ' + (lunas ? 'bg-success' : 'bg-danger') + '">' + (lunas ? 'Lunas' : 'Belum Bayar') + '</span></td><td><button class="btn btn-sm btn-warning" onclick="togglePay(' + p.id + ')">Ubah Status</button></td></tr>';
+    b.innerHTML += '<tr><td><strong>' + esc(p.room_number) + '</strong>' + kosTag + '</td><td>' + esc(p.tenant || '-') + '</td><td><small class="text-muted">' + esc(p.start_date) + ' s/d ' + esc(p.end_date) + '</small></td><td class="fw-semibold">' + rp(p.amount) + '</td><td><span class="badge ' + (lunas ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle') + '">' + (lunas ? 'Lunas' : 'Belum Bayar') + '</span></td><td><button class="btn btn-sm btn-outline-secondary" onclick="togglePay(' + p.id + ')">Ubah Status</button></td></tr>';
   });
 }
 
@@ -713,12 +1203,12 @@ function renderDevice() {
   const b = $('table-device');
   b.innerHTML = '';
   if (!D.smartlock || !D.smartlock.length) {
-    b.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Belum ada perangkat terdaftar.</td></tr>';
+    b.innerHTML = '<tr><td colspan="4" class="text-muted text-center py-4">Belum ada perangkat terdaftar.</td></tr>';
     return;
   }
   D.smartlock.forEach(function(s) {
     const kosTag = s.kos_name ? ' <small class="text-muted">(' + esc(s.kos_name) + ')</small>' : '';
-    b.innerHTML += '<tr><td><strong>Kamar ' + esc(s.room_number) + '</strong>' + kosTag + '</td><td>' + esc(s.serial_number || '-') + '</td><td>' + esc(s.verification_code || '-') + '</td><td><button class="btn btn-sm btn-outline-primary me-2" onclick="openDevice(' + s.id + ')"><i class="fa-solid fa-pen me-1"></i> Edit</button><button class="btn btn-sm btn-info text-white" onclick="verifyDevice(' + s.id + ')"><i class="fa-solid fa-signal me-1"></i> Cek Status Device</button></td></tr>';
+    b.innerHTML += '<tr><td><strong>Kamar ' + esc(s.room_number) + '</strong>' + kosTag + '</td><td><code>' + esc(s.serial_number || '-') + '</code></td><td><code>' + esc(s.verification_code || '-') + '</code></td><td><button class="btn btn-sm btn-outline-primary me-2" onclick="openDevice(' + s.id + ')"><i class="fa-solid fa-pen me-1"></i> Edit</button><button class="btn btn-sm btn-info text-white" onclick="verifyDevice(' + s.id + ')"><i class="fa-solid fa-signal me-1"></i> Cek Status Device</button></td></tr>';
   });
 }
 
@@ -736,7 +1226,7 @@ async function loadDoorLogs() {
 async function syncDoorLogs(manual) {
   const btn = $('btn-sync-door');
   if (manual && btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyinkronkan...'; }
-  const r = await api('/api/locks/open-logs/sync', 'POST', { force: !!manual });
+  const r = await api('/api/locks/open-logs/sync', 'POST', { force: !!manual }, { silent: !manual });
   if (manual && btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-door-open me-2"></i>Sinkron Riwayat Pintu'; }
   if (r && r.message && (manual || !r.ok || r.new > 0)) {
     D.doorSyncMsg = (new Date().toLocaleTimeString('id-ID')) + ' - ' + r.message;
@@ -784,7 +1274,7 @@ function renderDoorLogs() {
     return;
   }
   rows.forEach(function(l) {
-    b.innerHTML += '<tr><td><small>' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room) + '</strong>' + (l.kos_name ? '<br><small class="text-muted">' + esc(l.kos_name) + '</small>' : '') + '</td><td><span class="badge bg-info text-dark">' + esc(l.method) + '</span></td><td><span class="badge bg-success">' + esc(l.status) + '</span></td></tr>';
+    b.innerHTML += '<tr><td><small class="text-muted">' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room) + '</strong>' + (l.kos_name ? '<br><small class="text-muted">' + esc(l.kos_name) + '</small>' : '') + '</td><td><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">' + esc(l.method) + '</span></td><td><span class="badge bg-success-subtle text-success border border-success-subtle">' + esc(l.status) + '</span></td></tr>';
   });
 }
 
@@ -792,7 +1282,7 @@ function renderLogs() {
   const b = $('table-logs');
   b.innerHTML = '';
   (D.audit || []).forEach(function(l) {
-    b.innerHTML += '<tr><td><small>' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room || '-') + '</strong></td><td><span class="badge ' + (l.source === 'pintu' ? 'bg-info text-dark' : 'bg-secondary') + '">' + (l.source === 'pintu' ? '<i class="fa-solid fa-door-open me-1"></i>' : '') + esc(l.action) + '</span></td><td><span class="badge ' + (l.result === 'OK' ? 'bg-success' : 'bg-danger') + '">' + esc(l.result) + '</span></td><td>' + esc(l.message) + '</td></tr>';
+    b.innerHTML += '<tr><td><small class="text-muted">' + esc(l.timestamp) + '</small></td><td>' + esc(l.user) + '</td><td><strong>' + esc(l.room || '-') + '</strong></td><td><span class="badge ' + (l.source === 'pintu' ? 'bg-info-subtle text-info-emphasis' : 'bg-secondary-subtle text-secondary-emphasis') + '">' + (l.source === 'pintu' ? '<i class="fa-solid fa-door-open me-1"></i>' : '') + esc(l.action) + '</span></td><td><span class="badge ' + (l.result === 'OK' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger') + '">' + esc(l.result) + '</span></td><td>' + esc(l.message) + '</td></tr>';
   });
 }
 
@@ -850,6 +1340,7 @@ function openCheckIn(rid) {
   $('modal-room-title').innerText = r ? r.room_number : '';
   $('formCheckIn').reset();
   $('checkin-price').value = r ? (r.price || '') : '';
+  priceHint();
   modal('modalCheckIn').show();
 }
 
@@ -940,7 +1431,7 @@ async function runCommissioning() {
   box.innerHTML = '<div class="text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Menjalankan pengujian fungsi lengkap...</div>';
   const r = await api('/api/admin/commissioning', 'POST');
 
-  let html = '<div class="alert ' + (r.ok ? 'alert-success' : 'alert-warning') + '">Waktu Pengujian: ' + (r.timestamp || '-') + '</div><ul class="list-group">';
+  let html = '<div class="alert ' + (r.ok ? 'alert-success' : 'alert-warning') + ' mb-3">Waktu Pengujian: ' + (r.timestamp || '-') + '</div><ul class="list-group shadow-sm">';
   (r.results || []).forEach(function(res) {
     const badge = (res.status === 'OK') ? 'bg-success' : ((res.status === 'WARN') ? 'bg-warning text-dark' : 'bg-danger');
     html += '<li class="list-group-item d-flex justify-content-between align-items-center"><div><strong>' + esc(res.test) + '</strong><br><small class="text-muted">' + esc(res.detail) + '</small></div><span class="badge ' + badge + '">' + esc(res.status) + '</span></li>';
@@ -950,15 +1441,6 @@ async function runCommissioning() {
 }
 
 // ------------------------------------------------------------------ MASTER OWNER KOS
-async function loadMasterOwners() {
-  const list = await api('/api/master/owners');
-  const b = $('table-master-owners');
-  b.innerHTML = '';
-  (list || []).forEach(function(o) {
-    b.innerHTML += '<tr><td>' + o.id + '</td><td><strong>' + esc(o.kos_name) + '</strong></td><td>' + esc(o.name) + '</td><td>' + esc(o.phone) + '</td><td><span class="badge ' + (o.is_master ? 'bg-danger' : 'bg-primary') + '">' + (o.is_master ? 'Master Admin' : 'Pemilik Kos') + '</span></td><td>' + (!o.is_master ? '<button class="btn btn-sm btn-outline-primary me-1" onclick="openEditOwnerModal(' + o.id + ')"><i class="fa-solid fa-pen"></i> Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteMasterOwner(' + o.id + ')"><i class="fa-solid fa-trash"></i> Hapus</button>' : '-') + '</td></tr>';
-  });
-}
-
 function openAddOwnerModal() {
   $('owner-edit-id').value = '';
   $('formAddOwner').reset();
@@ -974,6 +1456,7 @@ function openEditOwnerModal(oid) {
   $('owner-kos-nama').value = o.kos_name;
   $('owner-nama').value = o.name;
   $('owner-telp').value = o.phone;
+  $('owner-valid').value = o.valid_until || '';
   $('box-owner-pw').classList.add('hidden');
   $('modalOwnerTitle').innerText = 'Edit Nama Kos & Pemilik';
   modal('modalAddOwner').show();
@@ -985,7 +1468,8 @@ $('formAddOwner').addEventListener('submit', async function(e) {
   const payload = {
     kos_name: $('owner-kos-nama').value,
     name: $('owner-nama').value,
-    phone: $('owner-telp').value
+    phone: $('owner-telp').value,
+    valid_until: $('owner-valid').value
   };
 
   if (!oid) {
@@ -1023,7 +1507,12 @@ function populateLockRooms() {
 }
 
 function lockBadge(cat) {
-  const m = { 'AKTIF': 'bg-success', 'KADALUARSA': 'bg-secondary', 'CHECKOUT': 'bg-warning text-dark', 'TIDAK TERPAKAI': 'bg-danger' };
+  const m = { 
+    'AKTIF': 'bg-success-subtle text-success border border-success-subtle', 
+    'KADALUARSA': 'bg-secondary-subtle text-secondary border border-secondary-subtle', 
+    'CHECKOUT': 'bg-warning-subtle text-warning-emphasis border border-warning-subtle', 
+    'TIDAK TERPAKAI': 'bg-danger-subtle text-danger border border-danger-subtle' 
+  };
   return '<span class="badge ' + (m[cat] || 'bg-dark') + '">' + esc(cat) + '</span>';
 }
 
@@ -1032,8 +1521,8 @@ function fmtEz(t) { return esc(String(t || '').replace('T', ' ').substring(0, 16
 async function loadLockPasswords() {
   const rid = $('locks-room').value;
   const b = $('table-locks');
-  if (!rid) { b.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Pilih kamar untuk memuat daftar.</td></tr>'; return; }
-  b.innerHTML = '<tr><td colspan="7" class="text-center text-muted"><i class="fa-solid fa-spinner fa-spin me-2"></i>Mengambil daftar dari smartlock...</td></tr>';
+  if (!rid) { b.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Pilih kamar untuk memuat daftar.</td></tr>'; return; }
+  b.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4"><i class="fa-solid fa-spinner fa-spin me-2"></i>Mengambil daftar dari smartlock...</td></tr>';
   $('locks-status').innerHTML = '';
   const r = await api('/api/locks/' + rid + '/passwords');
   if (!r.ok) {
@@ -1043,7 +1532,7 @@ async function loadLockPasswords() {
   }
   const items = r.items || [];
   if (!items.length) {
-    b.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Tidak ada password sementara di pintu ini.</td></tr>';
+    b.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada password sementara di pintu ini.</td></tr>';
     $('locks-status').innerHTML = '<div class="text-muted small">0 / 10 slot terpakai.</div>';
     return;
   }
@@ -1051,7 +1540,7 @@ async function loadLockPasswords() {
   $('locks-status').innerHTML = '<div class="text-muted small">' + items.length + ' / 10 slot terpakai, ' + bersih + ' dapat dibersihkan.</div>';
   b.innerHTML = '';
   items.forEach(function(p) {
-    b.innerHTML += '<tr><td>' + esc(p.passwordID) + '</td><td>' + esc(p.passwordName) + (p.tenant ? '<br><small class="text-muted">' + esc(p.tenant) + '</small>' : '') + '</td><td><small>' + esc(p.account) + '</small></td><td><small>' + fmtEz(p.startTimeStr) + ' s/d<br>' + fmtEz(p.endTimeStr) + '</small></td><td>' + (p.availableTimes === -1 ? 'Tak terbatas' : esc(p.availableTimes)) + '</td><td>' + lockBadge(p.category) + '</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteLockPassword(' + Number(p.passwordID) + ', \'' + esc(p.category) + '\')"><i class="fa-solid fa-trash"></i> Hapus</button></td></tr>';
+    b.innerHTML += '<tr><td><code>' + esc(p.passwordID) + '</code></td><td>' + esc(p.passwordName) + (p.tenant ? '<br><small class="text-muted">' + esc(p.tenant) + '</small>' : '') + '</td><td><small class="text-muted">' + esc(p.account) + '</small></td><td><small class="text-muted">' + fmtEz(p.startTimeStr) + ' s/d<br>' + fmtEz(p.endTimeStr) + '</small></td><td>' + (p.availableTimes === -1 ? 'Tak terbatas' : esc(p.availableTimes)) + '</td><td>' + lockBadge(p.category) + '</td><td><button class="btn btn-sm btn-outline-danger" onclick="deleteLockPassword(' + Number(p.passwordID) + ', \'' + esc(p.category) + '\')"><i class="fa-solid fa-trash"></i> Hapus</button></td></tr>';
   });
 }
 
@@ -1109,6 +1598,113 @@ function initStackedTables() {
     new MutationObserver(function() { labelTable(t); }).observe(tb, { childList: true });
   });
 }
+
+
+// ------------------------------------------------------------------ MASA SEWA, MASA BERLAKU AKUN, AKUN EZVIZ
+function leaseText(sec) {
+  if (sec == null) return '';
+  const a = Math.abs(sec), d = Math.floor(a / 86400), h = Math.floor((a % 86400) / 3600);
+  const s = d > 0 ? d + ' hari' + (h ? ' ' + h + ' jam' : '') : (h > 0 ? h + ' jam' : Math.max(1, Math.floor(a / 60)) + ' menit');
+  return sec < 0 ? 'Habis ' + s + ' lalu' : 'Sisa ' + s;
+}
+function leaseHtml(x) {
+  return '<span class="lease-' + (x.lease_state || 'ok') + '">' + esc(x.start_datetime) + ' s/d ' + esc(x.end_datetime) +
+    '<br><i class="fa-solid fa-hourglass-half me-1"></i>' + leaseText(x.remaining_sec) + '</span>';
+}
+function expiryText(left, date) {
+  if (left <= 0) return 'berakhir HARI INI (' + date + ').';
+  if (left === 1) return 'berakhir BESOK (' + date + ').';
+  return 'tinggal ' + left + ' hari lagi (s/d ' + date + ').';
+}
+function renderExpiryBanner() {
+  const el = $('expiryBanner');
+  if (!el || !CURRENT_USER) return;
+  let html = '';
+  if (CURRENT_USER.is_master) {
+    const soon = (D.owners || []).filter(function(o) { return !o.is_master && o.valid_until && (o.expired || (o.days_left != null && o.days_left <= 2)); });
+    if (soon.length) html = '<b>Masa berlaku akun:</b> ' + soon.map(function(o) {
+      return esc(o.kos_name) + ' (' + (o.expired ? 'sudah habis' : (o.days_left === 0 ? 'habis hari ini' : o.days_left + ' hari lagi')) + ')';
+    }).join(', ');
+  } else if (CURRENT_USER.days_left != null && CURRENT_USER.days_left <= 2) {
+    html = 'Masa berlaku akun Anda ' + expiryText(CURRENT_USER.days_left, CURRENT_USER.valid_until) + ' Hubungi Master Administrator untuk perpanjangan.';
+  }
+  el.className = html ? 'alert alert-warning d-flex align-items-start gap-2 mb-3' : 'd-none';
+  el.innerHTML = html ? '<i class="fa-solid fa-triangle-exclamation mt-1"></i><div>' + html + '</div>' : '';
+}
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function extendValid(m) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const cur = $('owner-valid').value;
+  let d = cur ? new Date(cur + 'T00:00:00') : today;
+  if (d < today) d = today;
+  d.setMonth(d.getMonth() + m);
+  $('owner-valid').value = ymd(d);
+}
+function expBadge(o) {
+  if (o.is_master) return '-';
+  if (!o.valid_until) return '<span class="badge bg-secondary-subtle text-secondary border">Tanpa batas</span>';
+  const cls = o.expired ? 'lease-expired' : (o.days_left <= 2 ? 'lease-warn' : 'lease-ok');
+  const txt = o.expired ? 'Habis ' + Math.abs(o.days_left) + ' hari lalu' : (o.days_left === 0 ? 'Habis hari ini' : 'Sisa ' + o.days_left + ' hari');
+  return '<span class="' + cls + '">' + esc(o.valid_until) + '</span><br><small class="' + cls + '">' + txt + '</small>';
+}
+function ezBadge(o) {
+  if (o.is_master) return '-';
+  if (o.ezviz_set) return '<span class="badge bg-success-subtle text-success border border-success-subtle">Akun sendiri</span>';
+  if (o.ezviz_env) return '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Bawaan server</span>';
+  return '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Belum diatur</span>';
+}
+async function loadMasterOwners() {
+  const list = await api('/api/master/owners');
+  if (list && list.length) D.owners = list;
+  const b = $('table-master-owners');
+  b.innerHTML = '';
+  (list || []).forEach(function(o) {
+    b.innerHTML += '<tr><td>' + o.id + '</td><td><strong>' + esc(o.kos_name) + '</strong></td><td>' + esc(o.name) + '</td><td>' + esc(o.phone) + '</td><td><span class="badge ' + (o.is_master ? 'bg-danger-subtle text-danger border border-danger-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle') + '">' + (o.is_master ? 'Master Admin' : 'Pemilik Kos') + '</span></td><td>' + expBadge(o) + '</td><td>' + ezBadge(o) + '</td><td>' +
+      (!o.is_master ? '<button class="btn btn-sm btn-outline-secondary me-1" onclick="openOwnerEzviz(' + o.id + ')"><i class="fa-solid fa-key"></i> EZVIZ</button><button class="btn btn-sm btn-outline-primary me-1" onclick="openEditOwnerModal(' + o.id + ')"><i class="fa-solid fa-pen"></i> Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteMasterOwner(' + o.id + ')"><i class="fa-solid fa-trash"></i> Hapus</button>' : '-') + '</td></tr>';
+  });
+  renderExpiryBanner();
+}
+function openOwnerEzviz(oid) { $('device-kos-filter').value = oid; switchTab('device'); fetchData(); }
+
+function ezOwner() { return (CURRENT_USER && CURRENT_USER.is_master) ? ($('device-kos-filter').value || '') : ''; }
+async function loadEzvizAccount() {
+  const isM = CURRENT_USER && CURRENT_USER.is_master, oid = ezOwner();
+  $('ez-hint').classList.toggle('d-none', !(isM && !oid));
+  $('ez-form').classList.toggle('d-none', !!(isM && !oid));
+  if (isM && !oid) { $('ez-title').innerText = 'Akun EZVIZ'; return; }
+  const r = await api('/api/ezviz-account' + (oid ? '?owner_id=' + oid : ''));
+  if (!r || !r.ok) return;
+  $('ez-title').innerText = 'Akun EZVIZ' + (r.kos_name ? ' - ' + r.kos_name : '');
+  $('ez-key').value = r.app_key || '';
+  $('ez-secret').value = '';
+  $('ez-secret').placeholder = r.secret_mask ? r.secret_mask + ' (kosongkan jika tidak diganti)' : 'App Secret';
+  $('ez-domain').value = r.area_domain || '';
+  const m = {
+    owner: ['text-success', 'Memakai akun EZVIZ milik kos ini.'],
+    env: ['text-warning-emphasis', 'Belum ada akun sendiri: memakai akun bawaan server (.env). Isi App Key & App Secret agar kos ini memakai akun EZVIZ sendiri.'],
+    none: ['text-danger', 'Belum diatur: isi App Key & App Secret dari EZVIZ Open Platform agar smartlock bisa dikelola.']
+  }[r.source] || ['', ''];
+  $('ez-status').className = 'small mb-2 fw-medium ' + m[0];
+  $('ez-status').innerText = m[1];
+}
+async function saveEzviz() {
+  const r = await api('/api/ezviz-account', 'PUT', { owner_id: ezOwner(), app_key: $('ez-key').value, app_secret: $('ez-secret').value, area_domain: $('ez-domain').value });
+  info(r.ok ? 'Berhasil' : 'Peringatan', r.message, r.ok ? true : 'error');
+  if (r.ok) { loadEzvizAccount(); if (CURRENT_USER.is_master) loadMasterOwners(); }
+}
+async function testEzviz() {
+  const r = await api('/api/ezviz-account/test', 'POST', { owner_id: ezOwner() });
+  info(r.ok ? 'Koneksi Berhasil' : 'Koneksi Gagal', r.message, !!r.ok);
+}
+
+function priceHint() { const v = $('checkin-price').value; $('checkin-price-hint').innerText = v ? rp(v) : ''; }
+$('checkin-price').addEventListener('input', priceHint);
+$('pwToggle').addEventListener('click', function() {
+  const i = $('login-pw'), show = i.type === 'password';
+  i.type = show ? 'text' : 'password';
+  this.innerHTML = '<i class="fa-solid ' + (show ? 'fa-eye-slash' : 'fa-eye') + '"></i>';
+  this.setAttribute('aria-label', show ? 'Sembunyikan password' : 'Tampilkan password');
+});
 
 document.addEventListener('DOMContentLoaded', function() { initStackedTables(); boot(); });
 </script>

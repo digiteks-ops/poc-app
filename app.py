@@ -50,23 +50,37 @@ def tz():
 def now():
     return datetime.now(tz()).strftime("%Y-%m-%d %H:%M:%S")
 
-def base():
-    u = urlparse(env("EZVIZ_AREA_DOMAIN", DEFAULT_DOMAIN))
-    return f"{u.scheme}://{u.netloc}" if u.scheme and u.netloc else DEFAULT_DOMAIN
+ALLOWED_DOMAIN_SUFFIXES = ("ezvizlife.com", "ezviz.com")
 
-def api_base():
-    """Host untuk panggilan API setelah token. Prioritas: EZVIZ_AREA_DOMAIN (.env) > areaDomain dari
-    respons token (sesuai dokumentasi) > domain bawaan."""
-    if env("EZVIZ_AREA_DOMAIN"):
-        return base()
-    a = (_tok.get("area") or "").strip().rstrip("/")
+def norm_domain(v):
+    u = urlparse((v or "").strip())
+    return f"{u.scheme}://{u.netloc}" if u.scheme and u.netloc else ""
+
+def owner_creds(oid):
+    """(app_key, app_secret, area_domain, sumber). Utama: milik kos; cadangan .env bila EZVIZ_ENV_FALLBACK=true."""
+    o = (q1("SELECT ezviz_app_key k, ezviz_app_secret s, ezviz_area_domain d FROM owners WHERE id=?", (oid,)) or {}) if oid else {}
+    k, s, d = (o.get("k") or "").strip(), (o.get("s") or "").strip(), (o.get("d") or "").strip()
+    if k and s:
+        return k, s, d or env("EZVIZ_AREA_DOMAIN"), "owner"
+    if env("EZVIZ_ENV_FALLBACK", "true").lower() == "true" and env("EZVIZ_APP_KEY") and env("EZVIZ_APP_SECRET"):
+        return env("EZVIZ_APP_KEY"), env("EZVIZ_APP_SECRET"), env("EZVIZ_AREA_DOMAIN"), "env"
+    return "", "", d, "none"
+
+def base(oid=0):
+    return norm_domain(owner_creds(oid)[2]) or DEFAULT_DOMAIN
+
+def api_base(oid=0):
+    """Host API setelah token. Prioritas: domain yang diatur (kos/.env) > areaDomain dari token > domain bawaan."""
+    if owner_creds(oid)[2]:
+        return base(oid)
+    a = (_tok.get(oid, {}).get("area") or "").strip().rstrip("/")
     if a:
         if not a.startswith("http"):
             a = "https://" + a
         u = urlparse(a)
         if u.netloc:
             return f"{u.scheme}://{u.netloc}"
-    return base()
+    return base(oid)
 
 def to_int(v, default=0):
     try:
@@ -93,7 +107,12 @@ def mask(v):
 
 def scrub(s):
     s = str(s)
-    for sec in (env("EZVIZ_APP_SECRET"), env("EZVIZ_ACCESS_TOKEN"), _tok.get("value") or ""):
+    secs = [env("EZVIZ_APP_SECRET"), env("EZVIZ_ACCESS_TOKEN")] + [e.get("value") or "" for e in _tok.values()]
+    try:
+        secs += [r["s"] for r in q("SELECT ezviz_app_secret s FROM owners WHERE ezviz_app_secret<>''")]
+    except Exception:
+        pass
+    for sec in secs:
         if sec:
             s = s.replace(sec, "***")
     return re.sub(r"at\.[A-Za-z0-9\-_]{20,}", "at.***", s)
@@ -221,6 +240,10 @@ def create_owner_rooms(owner_id):
 def init_db():
     c = sqlite3.connect(DB_PATH)
     c.executescript(SCHEMA)
+    have = {r[1] for r in c.execute("PRAGMA table_info(owners)")}
+    for col in ("valid_until", "ezviz_app_key", "ezviz_app_secret", "ezviz_area_domain"):
+        if col not in have:
+            c.execute(f"ALTER TABLE owners ADD COLUMN {col} TEXT DEFAULT ''")
 
     pwd_hash = generate_password_hash(DEFAULT_PASSWORD, method="pbkdf2:sha256")
 
@@ -263,12 +286,34 @@ def audit(action, room="", result="OK", message=""):
        (owner_id, now(), phone, action, room, result, scrub(message)[:500]))
 
 # ------------------------------------------------------------------ AUTHENTICATION
+def owner_expiry(oid):
+    """(tanggal_berakhir, sisa_hari, kadaluarsa). Kosong = tanpa batas."""
+    v = ((q1("SELECT valid_until FROM owners WHERE id=?", (oid,)) or {}).get("valid_until") or "").strip()[:10]
+    if not v:
+        return "", None, False
+    try:
+        left = (datetime.strptime(v, "%Y-%m-%d").date() - datetime.now(tz()).date()).days
+    except ValueError:
+        return v, None, False
+    return v, left, left < 0
+
+EXPIRED_MSG = "Masa berlaku akun Anda telah habis. Hubungi Master Administrator untuk perpanjangan."
+
+def parse_valid(v):
+    v = str(v or "").strip()[:10]
+    if v:
+        datetime.strptime(v, "%Y-%m-%d")
+    return v
+
 def login_required(master_only=False):
     def deco(f):
         @wraps(f)
         def w(*a, **k):
             if not session.get("owner_id"):
                 return jsonify(ok=False, message="Silakan login terlebih dahulu."), 401
+            if not session.get("is_master") and owner_expiry(session["owner_id"])[2]:
+                session.clear()
+                return jsonify(ok=False, expired=True, message=EXPIRED_MSG), 401
             if master_only and not session.get("is_master"):
                 return jsonify(ok=False, message="Akses khusus Akun Master Administrator."), 403
             return f(*a, **k)
@@ -302,7 +347,12 @@ def index():
 def me():
     if not session.get("owner_id"):
         return jsonify(authenticated=False)
+    v, left, exp = owner_expiry(session["owner_id"]) if not session.get("is_master") else ("", None, False)
+    if exp:
+        session.clear()
+        return jsonify(authenticated=False, expired=True, message=EXPIRED_MSG)
     return jsonify(
+        valid_until=v, days_left=left,
         authenticated=True,
         owner_id=session.get("owner_id"),
         phone=session.get("phone"),
@@ -327,6 +377,11 @@ def login():
         audit("Login GAGAL", result="GAGAL", message=f"No HP: {phone}")
         return jsonify(ok=False, message="Nomor telepon atau password salah."), 401
 
+    v, left, exp = ("", None, False) if owner["is_master"] else owner_expiry(owner["id"])
+    if exp:
+        audit("Login DITOLAK (masa berlaku habis)", result="GAGAL", message=f"No HP: {phone}")
+        return jsonify(ok=False, expired=True, message=EXPIRED_MSG), 403
+
     session.clear()
     session["owner_id"] = owner["id"]
     session["phone"] = owner["phone"]
@@ -335,7 +390,7 @@ def login():
     session["is_master"] = owner["is_master"]
 
     audit("Login", result="OK")
-    return jsonify(ok=True, name=owner["name"], kos_name=owner["kos_name"], phone=owner["phone"], is_master=bool(owner["is_master"]))
+    return jsonify(ok=True, name=owner["name"], kos_name=owner["kos_name"], phone=owner["phone"], is_master=bool(owner["is_master"]), valid_until=v, days_left=left)
 
 @app.post("/api/logout")
 def logout():
@@ -343,45 +398,50 @@ def logout():
     return jsonify(ok=True)
 
 # ------------------------------------------------------------------ TOKEN & EZVIZ API
-_tok = {"value": None, "exp": 0, "err": None, "area": ""}
+_tok = {}   # owner_id -> {"value","exp","err","area","sig"}
 
-def is_token_expired():
-    if not _tok["value"]:
-        return True
-    return time.time() >= (_tok["exp"] - 60)
+def _entry(oid):
+    return _tok.setdefault(oid, {"value": None, "exp": 0, "err": None, "area": "", "sig": ""})
 
-def get_token(force=False):
-    key, sec = env("EZVIZ_APP_KEY"), env("EZVIZ_APP_SECRET")
+def is_token_expired(oid):
+    e = _entry(oid)
+    return not e["value"] or time.time() >= (e["exp"] - 60)
+
+def get_token(oid, force=False):
+    key, sec, _d, _src = owner_creds(oid)
     if not (key and sec):
-        return None, {"code": "-", "msg": "AppKey belum diatur di .env"}
-    if not force and not is_token_expired():
-        return _tok["value"], None
+        return None, {"code": "-", "msg": "App Key / App Secret EZVIZ belum diatur. Isi di menu Setting Smartlock > Akun EZVIZ."}
+    e = _entry(oid)
+    if e["sig"] != key + "|" + sec:   # kredensial berubah -> buang token lama
+        e.update(value=None, exp=0, err=None, area="", sig=key + "|" + sec)
+    if not force and not is_token_expired(oid):
+        return e["value"], None
 
     try:
-        r = requests.post(base() + P_TOKEN, data={"appKey": key, "appSecret": sec}, timeout=15)
-    except requests.exceptions.RequestException as e:
-        return None, {"code": "NET", "msg": net_hint(e, base() + P_TOKEN)}
+        r = requests.post(base(oid) + P_TOKEN, data={"appKey": key, "appSecret": sec}, timeout=15)
+    except requests.exceptions.RequestException as ex_:
+        return None, {"code": "NET", "msg": net_hint(ex_, base(oid) + P_TOKEN)}
     try:
         j = r.json()
     except ValueError:
-        return None, {"code": str(r.status_code), "msg": f"Respons token bukan JSON (HTTP {r.status_code}). Periksa EZVIZ_AREA_DOMAIN."}
+        return None, {"code": str(r.status_code), "msg": f"Respons token bukan JSON (HTTP {r.status_code}). Periksa Area Domain."}
 
     data = j.get("data") or {}
     if str(j.get("code")) == "200" and data.get("accessToken"):
-        _tok["value"] = data["accessToken"]
+        e["value"] = data["accessToken"]
         et = float(data.get("expireTime") or 0)
-        if et <= 0:
-            _tok["exp"] = time.time() + 6 * 86400
-        else:
-            _tok["exp"] = (et / 1000) if et > 1e11 else (time.time() + et)
-        _tok["area"] = str(data.get("areaDomain") or "").strip()
-        _tok["err"] = None
-        return _tok["value"], None
+        e["exp"] = time.time() + 6 * 86400 if et <= 0 else ((et / 1000) if et > 1e11 else (time.time() + et))
+        e["area"] = str(data.get("areaDomain") or "").strip()
+        e["err"] = None
+        return e["value"], None
 
     code = str(j.get("code"))
     p = parse_ezviz_code(code, j.get("msg"))
-    _tok["err"] = {"code": code, "msg": f"[{code}] {p['detail']} (server: {j.get('msg') or '-'})"}
-    return None, _tok["err"]
+    e["err"] = {"code": code, "msg": f"[{code}] {p['detail']} (server: {j.get('msg') or '-'})"}
+    return None, e["err"]
+
+def owner_of_room(rid):
+    return (q1("SELECT owner_id FROM rooms WHERE id=?", (rid,)) or {}).get("owner_id", 0)
 
 def otap_hdr(sn, domain, kind, ident):
     return {"deviceSerial": sn, "resourceCategory": "DoorLock", "localIndex": "0",
@@ -403,8 +463,8 @@ def parse_ezviz_code(code_str, raw_msg=""):
         "10001": ("PARAMETER_ERROR", "Format parameter request tidak valid. Periksa apakah deviceSerial, email/telepon, atau format ISO datetime sesuai spec."),
         "10002": ("TOKEN_INVALID", "AccessToken expired atau tidak valid. Sistem akan merefresh token secara otomatis."),
         "10005": ("APPKEY_FROZEN", "appKey dibekukan/dinonaktifkan di EZVIZ Open Platform."),
-        "10017": ("APPKEY_NOT_EXIST", "appKey tidak ditemukan. Periksa EZVIZ_APP_KEY di .env."),
-        "10030": ("APPKEY_SECRET_MISMATCH", "appKey dan appSecret tidak cocok. Periksa EZVIZ_APP_SECRET di .env."),
+        "10017": ("APPKEY_NOT_EXIST", "appKey tidak ditemukan. Periksa App Key di Setting Smartlock > Akun EZVIZ."),
+        "10030": ("APPKEY_SECRET_MISMATCH", "appKey dan appSecret tidak cocok. Periksa App Secret di Setting Smartlock > Akun EZVIZ."),
         "10031": ("NO_PERMISSION", "Akun pengembang (appKey) tidak memiliki izin (CONFIG/UPDATE) pada perangkat ini."),
         "20002": ("DEVICE_NOT_EXIST", "Serial Number perangkat tidak terdaftar atau tidak ditemukan di akun cloud EZVIZ ini."),
         "20007": ("DEVICE_OFFLINE", "Perangkat Smartlock / Hub Gateway dalam kondisi OFFLINE (terputus dari WiFi/Server)."),
@@ -421,13 +481,13 @@ def parse_ezviz_code(code_str, raw_msg=""):
         "detail": detail
     }
 
-def ezviz_http(method, path, **kw):
+def ezviz_http(oid, method, path, **kw):
     """Panggil API EZVIZ pada api_base(); bila host areaDomain tak terjangkau, ulangi ke domain dasar."""
-    primary = api_base()
+    primary = api_base(oid)
     try:
         return requests.request(method, primary + path, timeout=15, **kw), primary
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-        fb = base()
+        fb = base(oid)
         if fb != primary:
             return requests.request(method, fb + path, timeout=15, **kw), fb
         raise
@@ -438,19 +498,19 @@ def manage_hint(text):
                 "waktu mulai sudah lewat, nama password tidak diterima, atau model kunci bukan CS-DL05-R201-WBCP-GR.")
     return ""
 
-def v3(method, path, hdr=None, body=None, _retry=True, params=None):
+def v3(oid, method, path, hdr=None, body=None, _retry=True, params=None):
     if not live():
         return {"ok": False, "code": "-", "msg": "EZVIZ Live Mode Nonaktif di .env", "parsed": {"type": "SIMULATION", "detail": "Aplikasi berjalan dalam mode simulasi lokal."}}
 
-    tok, err = get_token()
+    tok, err = get_token(oid)
     if not tok:
         return {"ok": False, "code": err.get("code"), "msg": err.get("msg"), "parsed": {"type": "TOKEN_ERROR", "detail": err.get("msg")}}
 
     h = {"accessToken": tok, **(hdr or {})}
     try:
-        r, used = ezviz_http(method, path, headers=h, json=body, params=params)
+        r, used = ezviz_http(oid, method, path, headers=h, json=body, params=params)
     except requests.exceptions.RequestException as e:
-        return {"ok": False, "code": "NET", "msg": str(e)[:200], "parsed": {"type": "NETWORK_ERROR", "detail": net_hint(e, api_base() + path)}}
+        return {"ok": False, "code": "NET", "msg": str(e)[:200], "parsed": {"type": "NETWORK_ERROR", "detail": net_hint(e, api_base(oid) + path)}}
 
     try:
         j = r.json()
@@ -463,8 +523,8 @@ def v3(method, path, hdr=None, body=None, _retry=True, params=None):
     msg = meta.get("message") or j.get("msg") or ""
 
     if code in ("10002", "100010") and _retry:
-        get_token(force=True)
-        return v3(method, path, hdr, body, _retry=False, params=params)
+        get_token(oid, force=True)
+        return v3(oid, method, path, hdr, body, _retry=False, params=params)
 
     dm = (meta.get("moreInfo") or {}).get("deviceMeta") or {}
     dcode, dmsg = dm.get("code"), str(dm.get("errorMsg") or "")
@@ -491,34 +551,34 @@ def err_text(r):
     p = r.get("parsed") or {}
     return f"[{r.get('code')}] {p.get('type')}: {p.get('detail')}" + (f" (server: {r['msg']})" if r.get("msg") else "")
 
-def lock_call(sn, ident, body):
-    return v3("PUT", P_OTAP_ACTION, hdr=otap_hdr(sn, "TemporaryPassword", "actionIdentifier", ident), body=body)
+def lock_call(oid, sn, ident, body):
+    return v3(oid, "PUT", P_OTAP_ACTION, hdr=otap_hdr(sn, "TemporaryPassword", "actionIdentifier", ident), body=body)
 
-def lock_list(sn):
-    r = lock_call(sn, "QueryTemporaryPassword", {"enabled": True})
+def lock_list(oid, sn):
+    r = lock_call(oid, sn, "QueryTemporaryPassword", {"enabled": True})
     items = r.get("data") if r.get("ok") and isinstance(r.get("data"), list) else []
     return r, items
 
-def lock_delete(sn, pid):
-    return lock_call(sn, "DeleteTemporaryPassword", {"passwordID": int(pid), "opType": 0})
+def lock_delete(oid, sn, pid):
+    return lock_call(oid, sn, "DeleteTemporaryPassword", {"passwordID": int(pid), "opType": 0})
 
-def lock_find_id(sn, name):
+def lock_find_id(oid, sn, name):
     """API Add tidak mengembalikan passwordID, jadi dicari dari daftar (ID terbesar dengan nama yang sama)."""
-    _r, items = lock_list(sn)
+    _r, items = lock_list(oid, sn)
     ids = [to_int(p.get("passwordID")) for p in items if p.get("passwordName") == name]
     return str(max(ids)) if ids else ""
 
-def lock_add(sn, name, email, start_iso, end_iso, times=-1):
-    return lock_call(sn, "AddTemporaryPassword", {"usageTimes": times, "passwordName": name, "type": 0,
+def lock_add(oid, sn, name, email, start_iso, end_iso, times=-1):
+    return lock_call(oid, sn, "AddTemporaryPassword", {"usageTimes": times, "passwordName": name, "type": 0,
                                                   "account": email, "startTimeStr": start_iso, "endTimeStr": end_iso})
 
 def retryable(r):
     return (not r["ok"]) and (r.get("parsed") or {}).get("type") in ("DEVICE_ERROR", "UNKNOWN_ERROR", "PARAMETER_ERROR")
 
-def push_tenant_password(tenant_name, email, start, end, sn):
+def push_tenant_password(oid, tenant_name, email, start, end, sn):
     """Kirim password temporer penyewa. Return (r, passwordID, catatan)."""
     name = pw_name(tenant_name)
-    r = lock_add(sn, name, email, iso(start), iso(end))
+    r = lock_add(oid, sn, name, email, iso(start), iso(end))
     note = ""
     if retryable(r):
         # Sebagian perangkat menolak waktu mulai yang sudah lewat/sama dengan sekarang -> coba sekali lagi
@@ -527,11 +587,11 @@ def push_tenant_password(tenant_name, email, start, end, sn):
         en = datetime.strptime(end[:16], "%Y-%m-%d %H:%M").replace(tzinfo=tz())
         if st <= now_dt + timedelta(minutes=1) and now_dt + timedelta(minutes=2) < en:
             st2 = now_dt + timedelta(minutes=2)
-            r2 = lock_add(sn, name, email, st2.isoformat(timespec="milliseconds"), iso(end))
+            r2 = lock_add(oid, sn, name, email, st2.isoformat(timespec="milliseconds"), iso(end))
             if r2["ok"]:
                 r = r2
                 note = f" (waktu mulai digeser ke {st2.strftime('%Y-%m-%d %H:%M')} karena perangkat menolak waktu mulai yang sudah lewat)"
-    pid = lock_find_id(sn, name) if r["ok"] else ""
+    pid = lock_find_id(oid, sn, name) if r["ok"] else ""
     return r, pid, note
 
 def room_serial(rid):
@@ -577,8 +637,9 @@ def classify_passwords(rid, items):
 
 def delete_lock_ids(rid, sn, ids):
     deleted, failed = [], []
+    oid = owner_of_room(rid)
     for pid in ids:
-        r = lock_delete(sn, pid)
+        r = lock_delete(oid, sn, pid)
         if r["ok"]:
             deleted.append(pid)
             ex("UPDATE tenants SET ezviz_sync_status=CASE WHEN status='AKTIF' THEN 'BELUM TERSINKRON' ELSE ezviz_sync_status END, "
@@ -598,7 +659,7 @@ def cleanup_room(rid, mode="auto"):
         return {**base_res, "message": f"Kamar {room['room_number']}: Live Mode OFF (.env), tidak ada yang dihapus."}
     if not sn:
         return {**base_res, "message": f"Kamar {room['room_number']}: Serial Number belum diisi."}
-    r, items = lock_list(sn)
+    r, items = lock_list(room["owner_id"], sn)
     if not r["ok"]:
         return {**base_res, "message": f"Kamar {room['room_number']}: gagal membaca daftar password. {err_text(r)}"}
     items = classify_passwords(rid, items)
@@ -624,30 +685,31 @@ def test_sync_room(rid):
     if not sn:
         return jsonify(ok=False, message=f"Serial Number untuk Kamar {room['room_number']} belum dikonfigurasi di Setting Smartlock."), 400
 
+    oid = room["owner_id"]
     now_dt = datetime.now(tz())
     end_dt = now_dt + timedelta(hours=1)
     email = "test@guesthouse.id"
 
-    r = lock_add(sn, "TestSync", email, now_dt.isoformat(timespec="milliseconds"), end_dt.isoformat(timespec="milliseconds"), times=1)
+    r = lock_add(oid, sn, "TestSync", email, now_dt.isoformat(timespec="milliseconds"), end_dt.isoformat(timespec="milliseconds"), times=1)
     note = ""
     if retryable(r):
-        r2 = lock_add(sn, "TestSync", email, (now_dt + timedelta(minutes=2)).isoformat(timespec="milliseconds"),
+        r2 = lock_add(oid, sn, "TestSync", email, (now_dt + timedelta(minutes=2)).isoformat(timespec="milliseconds"),
                       end_dt.isoformat(timespec="milliseconds"), times=1)
         if r2["ok"]:
             r = r2
             note = (" CATATAN: perangkat menolak waktu mulai = sekarang tetapi menerima waktu mulai +2 menit; "
                     "aplikasi otomatis menggeser waktu mulai saat check-in/sync.")
     if r["ok"]:
-        pid = lock_find_id(sn, "TestSync")
+        pid = lock_find_id(oid, sn, "TestSync")
         if pid:
-            d = lock_delete(sn, pid)
+            d = lock_delete(oid, sn, pid)
             note += " Password uji sudah dihapus kembali dari pintu." if d["ok"] else f" PERINGATAN: password uji ID {pid} belum terhapus, hapus lewat menu Password Pintu."
         else:
             note += " Password uji tidak ditemukan di daftar; periksa menu Password Pintu."
 
     return jsonify(
         ok=r["ok"],
-        domain=r.get("domain") or api_base(),
+        domain=r.get("domain") or api_base(oid),
         serial_number=sn,
         code=r["code"],
         raw_message=r["msg"],
@@ -659,7 +721,12 @@ def test_sync_room(rid):
 @app.get("/api/master/owners")
 @login_required(master_only=True)
 def master_owners_list():
-    return jsonify(q("SELECT id, phone, name, kos_name, is_master, created_at FROM owners ORDER BY id DESC"))
+    rows = q("SELECT id, phone, name, kos_name, is_master, created_at, valid_until, ezviz_app_key k, (ezviz_app_secret<>'') hs FROM owners ORDER BY id DESC")
+    for r in rows:
+        _v, r["days_left"], r["expired"] = owner_expiry(r["id"])
+        r["ezviz_set"] = bool(r.pop("k") and r.pop("hs"))
+        r["ezviz_env"] = (not r["ezviz_set"]) and owner_creds(r["id"])[3] == "env" and not r["is_master"]
+    return jsonify(rows)
 
 @app.post("/api/master/owners")
 @login_required(master_only=True)
@@ -672,13 +739,17 @@ def master_owner_add():
 
     if len(phone) < 9 or not name:
         return jsonify(ok=False, message="Nama dan Nomor Telepon (min 9 digit) wajib diisi."), 400
+    try:
+        valid = parse_valid(d.get("valid_until"))
+    except ValueError:
+        return jsonify(ok=False, message="Format Masa Berlaku tidak valid."), 400
 
     if q1("SELECT 1 FROM owners WHERE phone=?", (phone,)):
         return jsonify(ok=False, message="Nomor telepon sudah terdaftar."), 400
 
     pwd_hash = generate_password_hash(password, method="pbkdf2:sha256")
-    oid = ex("INSERT INTO owners(phone, password_hash, name, kos_name, is_master, created_at) VALUES(?,?,?,?,0,?)",
-             (phone, pwd_hash, name, kos_name, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    oid = ex("INSERT INTO owners(phone, password_hash, name, kos_name, is_master, created_at, valid_until) VALUES(?,?,?,?,0,?,?)",
+             (phone, pwd_hash, name, kos_name, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), valid))
 
     create_owner_rooms(oid)
     audit("Tambah Kos", result="OK", message=f"Kos: {kos_name}, HP: {phone}")
@@ -694,13 +765,17 @@ def master_owner_edit(oid):
 
     if not name or not kos_name or len(phone) < 9:
         return jsonify(ok=False, message="Data nama, nama kos, dan nomor telepon tidak valid."), 400
+    try:
+        valid = parse_valid(d.get("valid_until"))
+    except ValueError:
+        return jsonify(ok=False, message="Format Masa Berlaku tidak valid."), 400
 
     if not q1("SELECT 1 FROM owners WHERE id=?", (oid,)):
         return jsonify(ok=False, message="Data kos tidak ditemukan."), 404
     if q1("SELECT 1 FROM owners WHERE phone=? AND id<>?", (phone, oid)):
         return jsonify(ok=False, message="Nomor telepon sudah dipakai akun lain."), 400
-    ex("UPDATE owners SET name=?, kos_name=?, phone=? WHERE id=?", (name, kos_name, phone, oid))
-    audit("Edit Kos", result="OK", message=f"ID: {oid}, Kos: {kos_name}")
+    ex("UPDATE owners SET name=?, kos_name=?, phone=?, valid_until=? WHERE id=?", (name, kos_name, phone, valid, oid))
+    audit("Edit Kos", result="OK", message=f"ID: {oid}, Kos: {kos_name}, berlaku s/d {valid or 'tanpa batas'}")
     return jsonify(ok=True, message="Data Kos berhasil diperbarui.")
 
 @app.delete("/api/master/owners/<int:oid>")
@@ -795,12 +870,13 @@ def verify_smartlock(rid):
     if not live():
         return jsonify(ok=True, status="SIMULATION", title="Mode Simulasi (Live Mode OFF)", message=f"Perangkat Kamar {cfg['room_number']} tersimpan di DB.\nSN: {sn}\nStatus: Mode Live OFF (.env).")
 
-    tok, err = get_token()
+    oid = cfg["owner_id"]
+    tok, err = get_token(oid)
     if not tok:
         return jsonify(ok=False, status="ERROR", title="Gagal Dapatkan Token EZVIZ", message=f"AppKey / AppSecret salah atau terblokir: {err.get('msg')}")
 
     try:
-        r, _used = ezviz_http("POST", P_DEVICE_INFO, data={"accessToken": tok, "deviceSerial": sn})
+        r, _used = ezviz_http(oid, "POST", P_DEVICE_INFO, data={"accessToken": tok, "deviceSerial": sn})
         j = r.json()
         code = str(j.get("code"))
 
@@ -816,9 +892,9 @@ def verify_smartlock(rid):
             return jsonify(ok=is_online, status=status_str, title=f"Device {status_str}", message=msg)
 
         parsed = parse_ezviz_code(code, j.get("msg"))
-        return jsonify(ok=False, status=parsed["type"], title=f"Error {parsed['type']}", message=f"Pesan Server: {parsed['detail']}\nDomain: {api_base()}")
+        return jsonify(ok=False, status=parsed["type"], title=f"Error {parsed['type']}", message=f"Pesan Server: {parsed['detail']}\nDomain: {api_base(oid)}")
     except Exception as e:
-        return jsonify(ok=False, status="NET_ERROR", title="Koneksi Terputus", message=f"Gagal menghubungi server EZVIZ: {net_hint(e, base())}")
+        return jsonify(ok=False, status="NET_ERROR", title="Koneksi Terputus", message=f"Gagal menghubungi server EZVIZ: {net_hint(e, base(oid))}")
 
 @app.post("/api/tenants/<int:tid>/sync")
 @login_required()
@@ -828,6 +904,7 @@ def sync_tenant(tid):
         return jsonify(ok=False, warning=False, message="Data penghuni aktif tidak ditemukan.")
 
     sn = room_serial(t["room_id"])
+    oid = t["owner_id"]
 
     if not sn:
         ex("UPDATE tenants SET ezviz_sync_status='BELUM TERSINKRON', ezviz_message='Serial Number belum diset' WHERE id=?", (tid,))
@@ -839,9 +916,9 @@ def sync_tenant(tid):
 
     # Hapus password lama milik penyewa ini (bila ada) agar slot (maks. 10) tidak menumpuk
     if t["ezviz_password_id"]:
-        lock_delete(sn, t["ezviz_password_id"])
+        lock_delete(oid, sn, t["ezviz_password_id"])
 
-    r, pid, note = push_tenant_password(t["name"], t["email"], t["start_datetime"], t["end_datetime"], sn)
+    r, pid, note = push_tenant_password(oid, t["name"], t["email"], t["start_datetime"], t["end_datetime"], sn)
 
     if r["ok"]:
         ex("UPDATE tenants SET ezviz_sync_status='TEMP PASSWORD TERSINKRON', ezviz_message=?, ezviz_password_id=? WHERE id=?",
@@ -880,29 +957,47 @@ def dashboard():
 
     return jsonify(total=total, kosong=total - occ, terisi=occ, aktif=aktif_t, pendapatan=paid, belum=unpaid, lunas=paid_all, chart=chart)
 
+def _lease(rows):
+    """remaining_sec + lease_state: ok (hijau) | warn (kuning, sisa <= 3 hari) | expired (merah)."""
+    now_dt = datetime.now(tz())
+    for r in rows:
+        end = r.get("end_datetime")
+        if not end or r.get("status") == "SELESAI":
+            continue
+        try:
+            sec = int((datetime.strptime(str(end)[:16], "%Y-%m-%d %H:%M").replace(tzinfo=tz()) - now_dt).total_seconds())
+        except ValueError:
+            continue
+        r["remaining_sec"] = sec
+        r["lease_state"] = "expired" if sec < 0 else ("warn" if sec <= 3 * 86400 else "ok")
+    return rows
+
+def jsonify_l(rows):
+    return jsonify(_lease(rows))
+
 @app.get("/api/rooms")
 @login_required()
 def rooms():
     filter_oid = request.args.get("owner_id")
     if session.get("is_master"):
         if filter_oid:
-            return jsonify(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, o.kos_name, t.name tenant, t.email, t.start_datetime, t.end_datetime
+            return jsonify_l(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, o.kos_name, t.name tenant, t.price tenant_price, t.email, t.start_datetime, t.end_datetime
                 FROM rooms r LEFT JOIN owners o ON o.id=r.owner_id LEFT JOIN tenants t ON t.room_id=r.id AND t.status='AKTIF' WHERE r.owner_id=? ORDER BY r.id""", (filter_oid,)))
-        return jsonify(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, o.kos_name, t.name tenant, t.email, t.start_datetime, t.end_datetime
+        return jsonify_l(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, o.kos_name, t.name tenant, t.price tenant_price, t.email, t.start_datetime, t.end_datetime
             FROM rooms r LEFT JOIN owners o ON o.id=r.owner_id LEFT JOIN tenants t ON t.room_id=r.id AND t.status='AKTIF' ORDER BY o.id, r.id"""))
 
     oid = session["owner_id"]
-    return jsonify(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, t.name tenant, t.email, t.start_datetime, t.end_datetime
+    return jsonify_l(q("""SELECT r.id, r.owner_id, r.room_number, r.price, r.status, t.name tenant, t.price tenant_price, t.email, t.start_datetime, t.end_datetime
         FROM rooms r LEFT JOIN tenants t ON t.room_id=r.id AND t.status='AKTIF' WHERE r.owner_id=? ORDER BY r.id""", (oid,)))
 
 @app.get("/api/tenants")
 @login_required()
 def tenants():
     if session.get("is_master"):
-        return jsonify(q("""SELECT t.*, r.room_number, o.kos_name FROM tenants t JOIN rooms r ON r.id=t.room_id LEFT JOIN owners o ON o.id=t.owner_id ORDER BY (t.status='AKTIF') DESC, t.id DESC"""))
+        return jsonify_l(q("""SELECT t.*, r.room_number, o.kos_name FROM tenants t JOIN rooms r ON r.id=t.room_id LEFT JOIN owners o ON o.id=t.owner_id ORDER BY (t.status='AKTIF') DESC, t.id DESC"""))
     
     oid = session["owner_id"]
-    return jsonify(q("""SELECT t.*, r.room_number FROM tenants t JOIN rooms r ON r.id=t.room_id WHERE t.owner_id=? ORDER BY (t.status='AKTIF') DESC, t.id DESC""", (oid,)))
+    return jsonify_l(q("""SELECT t.*, r.room_number FROM tenants t JOIN rooms r ON r.id=t.room_id WHERE t.owner_id=? ORDER BY (t.status='AKTIF') DESC, t.id DESC""", (oid,)))
 
 @app.post("/api/checkin")
 @login_required()
@@ -956,7 +1051,7 @@ def checkin():
         ex("UPDATE tenants SET ezviz_sync_status='BELUM TERSINKRON', ezviz_message='Live Mode OFF' WHERE id=?", (tid,))
         return jsonify(ok=True, warning=True, message=f"Check-in untuk {name} di Kamar {room['room_number']} BERHASIL disimpan di database.\n\nPeringatan:\nSistem saat ini dalam Mode Simulasi (Live Mode OFF). Data tidak dikirim ke perangkat fisik EZVIZ.")
 
-    r, pid, note = push_tenant_password(name, email, start, end, sn)
+    r, pid, note = push_tenant_password(oid, name, email, start, end, sn)
 
     if r["ok"]:
         ex("UPDATE tenants SET ezviz_sync_status='TEMP PASSWORD TERSINKRON', ezviz_message=?, ezviz_password_id=? WHERE id=?",
@@ -976,13 +1071,14 @@ def checkout(tid):
         return jsonify(ok=False, message="Data penyewa tidak ditemukan."), 404
 
     note, warn = "", False
+    oid = t["owner_id"]
     sn = room_serial(t["room_id"])
     if sn and live():
         pid = str(t["ezviz_password_id"] or "")
         if not pid and t["ezviz_sync_status"] == "TEMP PASSWORD TERSINKRON":
-            pid = lock_find_id(sn, pw_name(t["name"]))
+            pid = lock_find_id(oid, sn, pw_name(t["name"]))
         if pid:
-            d = lock_delete(sn, pid)
+            d = lock_delete(oid, sn, pid)
             if d["ok"]:
                 note = " Password temporer penyewa di pintu sudah dihapus."
             else:
@@ -1057,44 +1153,49 @@ def run_commissioning():
     except Exception as e:
         add("1. Database Query", "FAIL", str(e))
 
-    key, sec = env("EZVIZ_APP_KEY"), env("EZVIZ_APP_SECRET")
-    if key and sec:
-        add("2. Konfigurasi EZVIZ API", "OK", f"AppKey: {mask(key)}")
-    else:
-        add("2. Konfigurasi EZVIZ API", "WARN", "AppKey/Secret belum diset di .env")
-
-    add("3. Live Mode", "OK" if live() else "WARN",
+    add("2. Live Mode", "OK" if live() else "WARN",
         "Aktif: perintah dikirim ke perangkat EZVIZ." if live() else "OFF (EZVIZ_LIVE_ENABLED bukan true): aplikasi hanya simulasi.")
 
-    host = urlparse(base()).hostname
-    dns_ok = True
-    try:
-        ips = sorted({a[4][0] for a in socket.getaddrinfo(host, 443)})
-        add(f"4. DNS {host}", "OK", "Terselesaikan ke " + ", ".join(ips[:3]))
-    except OSError as e:
-        dns_ok = False
-        add(f"4. DNS {host}", "FAIL", f"Host tidak bisa di-resolve ({e}). Ini masalah DNS/jaringan komputer, bukan kode. "
-                                      f"Coba DNS 8.8.8.8, cek VPN/firewall/ISP.")
-
-    tok, err = get_token(force=True)
-    if tok:
-        add("5. Perolehan Token EZVIZ", "OK", f"Token API EZVIZ Aktif & Valid. areaDomain: {_tok.get('area') or '-'}")
-    else:
-        add("5. Perolehan Token EZVIZ", "FAIL", f"Error Token: {err.get('msg')}")
+    owners = (q("SELECT id, kos_name FROM owners WHERE is_master=0 ORDER BY id") if is_master()
+              else [{"id": session["owner_id"], "kos_name": session.get("kos_name")}])
+    toks, dns = {}, {}
+    for o in owners:
+        oid, nm = o["id"], o["kos_name"]
+        key, _s, _d, src = owner_creds(oid)
+        if not key:
+            add(f"3. Akun EZVIZ ({nm})", "WARN", "App Key/Secret belum diatur (Setting Smartlock > Akun EZVIZ).")
+            continue
+        host = urlparse(base(oid)).hostname
+        if host not in dns:
+            try:
+                dns[host] = sorted({a[4][0] for a in socket.getaddrinfo(host, 443)})
+            except OSError as e:
+                dns[host] = str(e)
+        if isinstance(dns[host], str):
+            add(f"3. Akun EZVIZ ({nm})", "FAIL", f"DNS {host} gagal ({dns[host]}). Masalah jaringan/DNS komputer, bukan kode.")
+            continue
+        tok, err = get_token(oid, force=True)
+        label = f"3. Akun EZVIZ ({nm}) {mask(key)}" + (" [bawaan .env]" if src == "env" else "")
+        if tok:
+            toks[oid] = tok
+            add(label, "OK", f"Token aktif. DNS {host} OK. areaDomain: {_entry(oid).get('area') or '-'}")
+        else:
+            add(label, "FAIL", f"Error Token: {err.get('msg')}")
 
     if is_master():
-        rows = q("SELECT r.room_number, s.serial_number FROM rooms r JOIN smartlock_settings s ON s.room_id=r.id WHERE s.serial_number<>'' ORDER BY r.id LIMIT 10")
+        rows = q("SELECT r.room_number, r.owner_id, s.serial_number FROM rooms r JOIN smartlock_settings s ON s.room_id=r.id WHERE s.serial_number<>'' ORDER BY r.id LIMIT 10")
     else:
-        rows = q("SELECT r.room_number, s.serial_number FROM rooms r JOIN smartlock_settings s ON s.room_id=r.id WHERE s.serial_number<>'' AND r.owner_id=? ORDER BY r.id LIMIT 10", (session["owner_id"],))
+        rows = q("SELECT r.room_number, r.owner_id, s.serial_number FROM rooms r JOIN smartlock_settings s ON s.room_id=r.id WHERE s.serial_number<>'' AND r.owner_id=? ORDER BY r.id LIMIT 10", (session["owner_id"],))
     if not rows:
-        add("6. Perangkat Smartlock", "WARN", "Belum ada Serial Number terdaftar.")
+        add("4. Perangkat Smartlock", "WARN", "Belum ada Serial Number terdaftar.")
     for row in rows:
-        label = f"6. Kamar {row['room_number']} ({row['serial_number']})"
-        if not (tok and dns_ok):
-            add(label, "WARN", "Dilewati (token/DNS belum siap).")
+        label = f"4. Kamar {row['room_number']} ({row['serial_number']})"
+        tok, oid = toks.get(row["owner_id"]), row["owner_id"]
+        if not tok:
+            add(label, "WARN", "Dilewati (akun EZVIZ/token belum siap).")
             continue
         try:
-            resp, _u = ezviz_http("POST", P_DEVICE_INFO, data={"accessToken": tok, "deviceSerial": row["serial_number"]})
+            resp, _u = ezviz_http(oid, "POST", P_DEVICE_INFO, data={"accessToken": tok, "deviceSerial": row["serial_number"]})
             j = resp.json()
             code = str(j.get("code"))
             if code == "200":
@@ -1103,9 +1204,60 @@ def run_commissioning():
             else:
                 add(label, "FAIL", f"[{code}] {parse_ezviz_code(code, j.get('msg'))['detail']}")
         except Exception as e:
-            add(label, "FAIL", net_hint(e, base()))
+            add(label, "FAIL", net_hint(e, base(oid)))
 
     return jsonify(ok=all(x["status"] != "FAIL" for x in results), timestamp=now(), results=results)
+
+# ------------------------------------------------------------------ AKUN EZVIZ PER PEMILIK KOS
+def acct_oid():
+    d = request.get_json(silent=True) or {}
+    oid = to_int(d.get("owner_id") or request.args.get("owner_id"))
+    return oid if (oid and is_master()) else session["owner_id"]
+
+@app.get("/api/ezviz-account")
+@login_required()
+def ezviz_account_get():
+    oid = acct_oid()
+    o = q1("SELECT kos_name, ezviz_app_key k, ezviz_app_secret s, ezviz_area_domain d FROM owners WHERE id=?", (oid,))
+    if not o:
+        return jsonify(ok=False, message="Data kos tidak ditemukan."), 404
+    return jsonify(ok=True, owner_id=oid, kos_name=o["kos_name"], app_key=o["k"] or "",
+                   secret_mask="••••••••" if o["s"] else "", area_domain=o["d"] or "",
+                   source=owner_creds(oid)[3], live=live())
+
+@app.put("/api/ezviz-account")
+@login_required()
+def ezviz_account_put():
+    d = request.json or {}
+    oid = acct_oid()
+    o = q1("SELECT ezviz_app_key k, ezviz_app_secret s FROM owners WHERE id=?", (oid,))
+    if not o:
+        return jsonify(ok=False, message="Data kos tidak ditemukan."), 404
+    key, sec, dom = (str(d.get(x, "")).strip() for x in ("app_key", "app_secret", "area_domain"))
+    if dom:
+        nd = norm_domain(dom)
+        host = urlparse(nd).hostname or ""
+        if not nd.startswith("https://") or not any(host == s_ or host.endswith("." + s_) for s_ in ALLOWED_DOMAIN_SUFFIXES):
+            return jsonify(ok=False, message="Area Domain harus alamat https milik EZVIZ, contoh: https://isgpopen.ezvizlife.com"), 400
+        dom = nd
+    if key and key != (o["k"] or "") and not sec:
+        return jsonify(ok=False, message="App Key diganti: App Secret baru wajib diisi."), 400
+    if key and not (sec or o["s"]):
+        return jsonify(ok=False, message="App Secret wajib diisi."), 400
+    new_sec = (sec or o["s"] or "") if key else ""
+    ex("UPDATE owners SET ezviz_app_key=?, ezviz_app_secret=?, ezviz_area_domain=? WHERE id=?", (key, new_sec, dom, oid))
+    _tok.pop(oid, None)
+    audit("Ganti Akun EZVIZ", message=f"Kos ID {oid}, AppKey {mask(key) if key else '(dikosongkan)'}")
+    return jsonify(ok=True, message="Akun EZVIZ disimpan." if key else "Akun EZVIZ dikosongkan.")
+
+@app.post("/api/ezviz-account/test")
+@login_required()
+def ezviz_account_test():
+    oid = acct_oid()
+    tok, err = get_token(oid, force=True)
+    if tok:
+        return jsonify(ok=True, message=f"Terhubung ke EZVIZ. Token berhasil diperoleh.\nHost: {api_base(oid)}")
+    return jsonify(ok=False, message=scrub(err["msg"]))
 
 @app.get("/api/audit")
 @login_required()
@@ -1178,7 +1330,7 @@ _open_bad = set()   # nama variasi rentang yang pernah ditolak server (10001)
 
 def sync_lock_user_names(rid, sn):
     """Nama catatan (remark) pengguna kunci, supaya sama dengan yang tampil di aplikasi HP EZVIZ."""
-    r = v3("GET", P_KEYLOCK_USERS, params={"deviceSerial": sn})
+    r = v3(owner_of_room(rid), "GET", P_KEYLOCK_USERS, params={"deviceSerial": sn})
     if not r["ok"] or not isinstance(r.get("data"), list):
         return
     for u in r["data"]:
@@ -1212,7 +1364,7 @@ def sync_open_logs(rid, full=False):
             prm = {"deviceSerial": sn, "pageStart": page, "pageSize": 50}
             if sd and ed:
                 prm.update(start=sd.isoformat(), end=ed.isoformat())
-            r = v3("GET", P_KEYLOCK_OPEN, params=prm)
+            r = v3(room["owner_id"], "GET", P_KEYLOCK_OPEN, params=prm)
             if not r["ok"]:
                 if page == 0 and str(r.get("code")) == "10001":
                     _open_bad.add(name)            # variasi ini ditolak server, lewati
@@ -1256,7 +1408,7 @@ def _open_logs_raw(rid):
             prm = {"deviceSerial": sn, "pageStart": page, "pageSize": 50}
             if sd and ed:
                 prm.update(start=sd.isoformat(), end=ed.isoformat())
-            r = v3("GET", P_KEYLOCK_OPEN, params=prm)
+            r = v3(room["owner_id"], "GET", P_KEYLOCK_OPEN, params=prm)
             if not r["ok"]:
                 break
             got = r.get("data") if isinstance(r.get("data"), list) else []
@@ -1354,7 +1506,7 @@ def lock_passwords(rid):
     sn = room_serial(rid)
     if not sn:
         return jsonify(ok=False, message="Serial Number kamar ini belum diisi.")
-    r, items = lock_list(sn)
+    r, items = lock_list(owner_of_room(rid), sn)
     if not r["ok"]:
         return jsonify(ok=False, message=err_text(r))
     return jsonify(ok=True, serial_number=sn, items=classify_passwords(rid, items))

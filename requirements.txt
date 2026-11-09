@@ -2,4 +2,3 @@ flask
 requests
 python-dotenv
 tzdata
-gunicorn
