@@ -118,6 +118,21 @@ body {
   color: #ffffff;
 }
 
+/* Tombol Keluar: kontras jelas di sidebar gelap */
+.sidebar a.nav-logout {
+  color: #fecaca;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(248, 113, 113, 0.55);
+  font-weight: 600;
+}
+.sidebar a.nav-logout i { color: #fca5a5; }
+.sidebar a.nav-logout:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+.sidebar a.nav-logout:hover i { color: #ffffff; }
+
 .content-area {
   padding: 24px;
   min-width: 0;
@@ -447,7 +462,7 @@ body {
       <!-- Menu Khusus Akun Master -->
       <a id="nav-master-owners" class="master-only hidden" onclick="switchTab('master-owners'); loadMasterOwners();"><i class="fa-solid fa-users-gear"></i>Kelola Nama Kos</a>
       
-      <a onclick="logout()" class="mt-4 text-danger-emphasis"><i class="fa-solid fa-right-from-bracket"></i>Keluar</a>
+      <a onclick="logout()" class="nav-logout mt-4"><i class="fa-solid fa-right-from-bracket"></i>Keluar</a>
     </nav>
    </div>
   </div>
@@ -564,7 +579,7 @@ body {
           </select>
         </div>
       </div>
-      <div class="card shadow-sm p-3 mb-3" id="ez-acct">
+      <div class="card shadow-sm p-3 mb-3 master-only hidden" id="ez-acct">
         <h5 class="fw-bold mb-2" id="ez-title">Akun EZVIZ</h5>
         <div id="ez-hint" class="alert alert-info small mb-0 d-none">Pilih nama kos pada filter di atas untuk mengatur akun EZVIZ (App Key &amp; App Secret) kos tersebut.</div>
         <div id="ez-form">
@@ -1668,6 +1683,7 @@ function openOwnerEzviz(oid) { $('device-kos-filter').value = oid; switchTab('de
 
 function ezOwner() { return (CURRENT_USER && CURRENT_USER.is_master) ? ($('device-kos-filter').value || '') : ''; }
 async function loadEzvizAccount() {
+  if (!CURRENT_USER || !CURRENT_USER.is_master) return; // App Key & Secret hanya untuk akun Master
   const isM = CURRENT_USER && CURRENT_USER.is_master, oid = ezOwner();
   $('ez-hint').classList.toggle('d-none', !(isM && !oid));
   $('ez-form').classList.toggle('d-none', !!(isM && !oid));
