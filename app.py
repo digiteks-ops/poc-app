@@ -1215,7 +1215,7 @@ def acct_oid():
     return oid if (oid and is_master()) else session["owner_id"]
 
 @app.get("/api/ezviz-account")
-@login_required()
+@login_required(master_only=True)
 def ezviz_account_get():
     oid = acct_oid()
     o = q1("SELECT kos_name, ezviz_app_key k, ezviz_app_secret s, ezviz_area_domain d FROM owners WHERE id=?", (oid,))
@@ -1226,7 +1226,7 @@ def ezviz_account_get():
                    source=owner_creds(oid)[3], live=live())
 
 @app.put("/api/ezviz-account")
-@login_required()
+@login_required(master_only=True)
 def ezviz_account_put():
     d = request.json or {}
     oid = acct_oid()
@@ -1251,7 +1251,7 @@ def ezviz_account_put():
     return jsonify(ok=True, message="Akun EZVIZ disimpan." if key else "Akun EZVIZ dikosongkan.")
 
 @app.post("/api/ezviz-account/test")
-@login_required()
+@login_required(master_only=True)
 def ezviz_account_test():
     oid = acct_oid()
     tok, err = get_token(oid, force=True)
